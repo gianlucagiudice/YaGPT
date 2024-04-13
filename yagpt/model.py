@@ -1,11 +1,24 @@
+from dataclasses import dataclass
+
 import torch
 
 
+@dataclass
+class YaGPTConfig:
+    seq_len: int
+    d_model: int
+    n_heads: int
+    n_layers: int
+    d_ff: int
+    dropout: float
+
+    vocab_size: int
+
+
 class Embeddings(torch.nn.Module):
-    def __init__(self, vocab_size: int, d_model: int, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.vocab_size = vocab_size
-        self.latent_dim = d_model
+    def __init__(self, d_model: int, vocab_size: int):
+        super().__init__()
+        self.d_model = d_model
         self.embeddings = torch.nn.parameter.Parameter(
             torch.randn(vocab_size, d_model)
         )
@@ -17,16 +30,14 @@ class Embeddings(torch.nn.Module):
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         # IDS: (B, N), Embeddings: (Vocab_size, D) -> (B, N, D)
         embeddings = self.embeddings[input_ids]
-        embeddings = embeddings * torch.sqrt(torch.tensor(self.latent_dim))
+        embeddings = embeddings * torch.sqrt(torch.tensor(self.d_model))
         return embeddings
 
 
 class PositionalEncoding(torch.nn.Module):
-    def __init__(self, sequence_len: int, d_model: int, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.sequence_len = sequence_len
-        self.d_model = d_model
-        self.pe = self._init_pe(sequence_len, d_model)
+    def __init__(self, d_model: int, seq_len: int):
+        super().__init__()
+        self.pe = self._init_pe(seq_len, d_model)
         self.register_buffer('positional_encoding', self.pe)
 
     @staticmethod
@@ -50,14 +61,143 @@ class PositionalEncoding(torch.nn.Module):
         return res
 
 
+class FeedForwardLayer(torch.nn.Module):
+    def __init__(self, d_model: int, d_ff: int, dropout: float):
+        super().__init__()
+        self.linear_1 = torch.nn.Linear(d_model, d_ff)
+        self.dropout = torch.nn.Dropout(dropout)
+        self.linear_2 = torch.nn.Linear(d_ff, d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.linear_1(x)
+        x = self.dropout(x)
+        x = self.linear_2(x)
+        return x
+
+
+class CausalMultiHeadAttentionLayer(torch.nn.Module):
+    def __init__(self, d_model: int, n_heads: int, seq_len: int, dropout: float):
+        super().__init__()
+
+        assert d_model % n_heads == 0, ValueError(
+            'Error! The model dimension should be divisible by the number of heads')
+
+        self.seq_len = seq_len
+        self.n_heads = n_heads
+        self.d_head = d_model // n_heads
+
+        self.q_transform = torch.nn.Linear(d_model, d_model)
+        self.k_transform = torch.nn.Linear(d_model, d_model)
+        self.v_transform = torch.nn.Linear(d_model, d_model)
+
+        self.linear = torch.nn.Linear(d_model, d_model)
+
+        self.causal_mask = self.causal_mask_factory(seq_len)
+
+        self.dropout = torch.nn.Dropout(dropout)
+
+    @staticmethod
+    def causal_mask_factory(seq_len: int) -> torch.Tensor:
+        mask = torch.ones(seq_len, seq_len, requires_grad=False)
+        mask = torch.tril(mask)
+        mask = mask.view(1, 1, seq_len, seq_len)
+        return mask
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Compute QKV
+        q = self.q_transform(x)  # (B, N, D)
+        k = self.k_transform(x)  # (B, N, D)
+        v = self.v_transform(x)  # (B, N, D)
+
+        # Split matrices into multiple heads (B, N, D) -> (B, N, HEADS, D_HEAD)
+        q = q.view(x.shape[0], self.seq_len, self.n_heads, self.d_head)
+        k = k.view(x.shape[0], self.seq_len, self.n_heads, self.d_head)
+        v = v.view(x.shape[0], self.seq_len, self.n_heads, self.d_head)
+
+        # Transpose tensor (B, N, HEADS, D_HEAD) -> (B, HEADS, N, D_HEAD)
+        q = q.transpose(1, 2)
+        k = k.transpose(1, 2)
+        v = v.transpose(1, 2)
+
+        # Compute attention
+        attention = q @ k.transpose(2, 3)
+        attention = attention * (1 / self.d_head)
+        attention_mask = self.causal_mask.repeat(attention.shape[0], attention.shape[1], 1, 1) == 0
+        attention[attention_mask] = - torch.inf
+        attention = torch.nn.functional.softmax(attention, dim=-1)
+        attention = attention @ v
+
+        # Concatenate heads
+        res = attention.transpose(1, 2).reshape(x.shape[0], x.shape[1], -1)
+        res = self.linear(res)
+        res = self.dropout(res)
+
+        return res
+
+
+class DecoderLayer(torch.nn.Module):
+    def __init__(self, d_model: int, d_ff: int, n_heads: int, seq_len: int, dropout: float):
+        super().__init__()
+        self.layer_norm_1 = torch.nn.LayerNorm(d_model, bias=False)
+        self.causal_self_attention = CausalMultiHeadAttentionLayer(d_model, n_heads, seq_len, dropout)
+        self.layer_norm_2 = torch.nn.LayerNorm(d_model, bias=False)
+        self.ffn = FeedForwardLayer(d_model, d_ff, dropout)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x_res = x
+        x = self.layer_norm_1(x)
+        x = self.causal_self_attention(x)
+        x = x + x_res
+
+        x_res = x
+        x = self.layer_norm_2(x)
+        x = self.ffn(x)
+        x = x + x_res
+
+        return x
+
+
+class Decoder(torch.nn.Module):
+
+    def __init__(self, d_model: int, d_ff: int, n_heads: int, seq_len: int, n_layers: int, dropout: float):
+        super().__init__()
+        self.layers = torch.nn.ModuleList(
+            [DecoderLayer(d_model, d_ff, n_heads, seq_len, dropout) for _ in range(n_layers)]
+        )
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+
 class YaGPT(torch.nn.Module):
-    def __init__(self, embeddings: Embeddings, pos_encoding: PositionalEncoding, *args, **kwargs):
+    def __init__(self, config: YaGPTConfig, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.embeddings = embeddings
-        self.pos_encoding = pos_encoding
+        self.config = config
+        self.embeddings = Embeddings(config.d_model, config.vocab_size)
+        self.pos_encoding = PositionalEncoding(config.d_model, config.seq_len)
+        self.embeddings_dropout = torch.nn.Dropout(config.dropout)
+        self.decoder = Decoder(
+            config.d_model,
+            config.d_ff,
+            config.n_heads,
+            config.seq_len,
+            config.n_layers,
+            config.dropout
+        )
+        self.normalization = torch.nn.LayerNorm(config.d_model)
+        self.head = torch.nn.Linear(config.d_model, config.vocab_size)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         embeddings = self.embeddings(input_ids)
         embeddings = self.pos_encoding(embeddings)
+        embeddings = self.embeddings_dropout(embeddings)
 
-        return embeddings
+        embeddings = self.decoder(embeddings)
+
+        embeddings = self.normalization(embeddings)
+
+        logits = self.head(embeddings)
+
+        return logits
