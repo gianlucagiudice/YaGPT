@@ -57,7 +57,7 @@ class PositionalEncoding(torch.nn.Module):
         return pe
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
-        res = embeddings + self.pe
+        res = embeddings + self.pe.to(embeddings.device)
         return res
 
 
@@ -86,9 +86,9 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
 
-        self.q_transform = torch.nn.Linear(d_model, d_model)
-        self.k_transform = torch.nn.Linear(d_model, d_model)
-        self.v_transform = torch.nn.Linear(d_model, d_model)
+        self.q_transform = torch.nn.Linear(d_model, d_model, bias=False)
+        self.k_transform = torch.nn.Linear(d_model, d_model, bias=False)
+        self.v_transform = torch.nn.Linear(d_model, d_model, bias=False)
 
         self.linear = torch.nn.Linear(d_model, d_model)
 
