@@ -1,9 +1,16 @@
 import re
 from pathlib import Path
-from typing import Tuple, Literal
+from typing import Tuple, Literal, List
 
+import torch
 from nltk import word_tokenize
 from torch.utils.data import Dataset
+
+
+def collate_fn(batch: List[Tuple[list[int], list[int]]]) -> Tuple[torch.Tensor, torch.Tensor]:
+    batch = torch.tensor(batch).long()
+    x, y = batch[:, 0], batch[:, 1]
+    return x, y
 
 
 class DivinaCommediaDataset(Dataset):
@@ -19,10 +26,11 @@ class DivinaCommediaDataset(Dataset):
             raise ValueError(f'split must be either "train" or "val", got {split}')
 
         self.full_text, self.split = self.read_dataset(dataset_path, train_ratio, split)
-        self.tokens = word_tokenize(self.split, language='italian')
+        #self.tokens = word_tokenize(self.split, language='italian')
+        self.tokens = list(self.split)
         self.seq_len = seq_len
 
-        self.token2idx = {token: idx for idx, token in enumerate(set(self.tokens))}
+        self.token2idx = {token: idx for idx, token in enumerate(set(self.full_text))}
         self.idx2token = {idx: token for token, idx in self.token2idx.items()}
         self.vocab_size = len(self.token2idx)
 
@@ -52,9 +60,14 @@ class DivinaCommediaDataset(Dataset):
     def __len__(self):
         return len(self.tokens) - self.seq_len
 
-    def __getitem__(self, idx) -> list[str]:
-        tokens = self.tokens[idx: idx + self.seq_len]
-        return tokens
+    def __getitem__(self, idx) -> Tuple[list[int], list[int]]:
+        x = self.tokens[idx: idx + self.seq_len]
+        y = self.tokens[idx + 1: idx + 1 + self.seq_len]
+
+        x = [self.token2idx[token] for token in x]
+        y = [self.token2idx[token] for token in y]
+
+        return x, y
 
 
 if __name__ == '__main__':
