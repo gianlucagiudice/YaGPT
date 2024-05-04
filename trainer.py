@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import lightning as L
-import torch
 from lightning.pytorch.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
