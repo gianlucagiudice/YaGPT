@@ -1,10 +1,13 @@
 from pathlib import Path
+
+import lightning as L
 import torch
+from lightning.pytorch.loggers import TensorBoardLogger
+from torch.utils.data import DataLoader
 
 from yagpt import model_factory
-from torch.utils.data import DataLoader
 from yagpt.dataset.divina_commedia import DivinaCommediaDataset, collate_fn
-from tqdm import tqdm
+from yagpt.model import YaGPT
 
 
 @torch.no_grad()
@@ -27,7 +30,6 @@ def autoregressive_prediction(
         x_original = x.clone()
 
         for step in range(autoregressive_steps):
-
             pred = model(x)
 
             pred_id = torch.argmax(pred[0, -1, :]).item()
@@ -48,7 +50,6 @@ def autoregressive_prediction(
 
 def main(
         dataset_path: str,
-        device: str,
         batch_size: int,
         d_model: int,
         seq_len: int,
@@ -59,43 +60,41 @@ def main(
 ):
     # Load datasets
     train_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'train')
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=True)
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, collate_fn=collate_fn,
+        shuffle=True, num_workers=8, persistent_workers=True
+    )
 
     val_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'val')
-    val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=collate_fn, shuffle=False)
+    val_loader = DataLoader(
+        val_dataset, batch_size=batch_size, collate_fn=collate_fn,
+        shuffle=False, num_workers=8, persistent_workers=True
+    )
 
-    device = torch.device(device)
     vocab_size = train_dataset.vocab_size
-    model = model_factory(d_model, seq_len, n_heads, n_layers, dropout, vocab_size)
-    model.train()
-    model.to(device)
+    model: YaGPT = model_factory(d_model, seq_len, n_heads, n_layers, dropout, vocab_size)
 
-    optimizer = torch.optim.AdamW(model.parameters())
-
-    pbar_epochs = tqdm(range(n_epochs), desc="Epochs", position=0)
-    for epoch in pbar_epochs:
-        pbar_batches = tqdm(train_loader, total=len(train_loader), desc=f"Training Epoch {epoch+1}", position=1)
-        for x, y in pbar_batches:
-            x, y = x.to(device), y.to(device)
-            optimizer.zero_grad()
-            outputs = model(x)
-            logits = outputs.transpose(1, 2)
-            loss = torch.nn.functional.cross_entropy(logits, y)
-            loss.backward()
-            optimizer.step()
-            pbar_batches.set_postfix(loss=loss.item())
-
-        autoregressive_prediction(model, val_loader, device, train_dataset.idx2token)
+    # Train model
+    trainer = L.Trainer(
+        max_epochs=n_epochs,
+        logger=L.pytorch.loggers.WandbLogger(project="YaGPT", log_model='all'),
+        val_check_interval=500,
+        limit_val_batches=30,
+        callbacks=[
+            L.pytorch.callbacks.ModelCheckpoint(save_last=True),
+            L.pytorch.callbacks.EarlyStopping(monitor='val_loss', patience=5),
+        ],
+    )
+    trainer.fit(model, train_loader, val_loader)
 
 
 if __name__ == '__main__':
     dataset_path = str(Path(__file__).parent / 'dataset' / 'inferno.txt')
     main(
         dataset_path=dataset_path,
-        device='mps',
-        batch_size=32,
+        batch_size=16,
         d_model=512,
-        seq_len=768,
+        seq_len=256,
         n_heads=8,
         n_layers=6,
         dropout=0.1,
