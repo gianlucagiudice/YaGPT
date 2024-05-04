@@ -55,17 +55,18 @@ def main(
         seq_len: int,
         n_heads: int,
         n_layers: int,
+        train_ratio: float = 0.7,
         dropout: float = 0.1,
         n_epochs: int = 100,
 ):
     # Load datasets
-    train_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'train')
+    train_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'train', train_ratio=train_ratio)
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size, collate_fn=collate_fn,
         shuffle=True, num_workers=8, persistent_workers=True
     )
 
-    val_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'val')
+    val_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'val', train_ratio=train_ratio)
     val_loader = DataLoader(
         val_dataset, batch_size=batch_size, collate_fn=collate_fn,
         shuffle=False, num_workers=8, persistent_workers=True
@@ -98,4 +99,5 @@ if __name__ == '__main__':
         n_heads=8,
         n_layers=6,
         dropout=0.1,
+        train_ratio=0.7
     )
