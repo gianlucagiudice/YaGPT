@@ -1,5 +1,5 @@
 from pathlib import Path
-import torch.optim
+import torch
 
 from yagpt import model_factory
 from torch.utils.data import DataLoader
@@ -47,8 +47,8 @@ def autoregressive_prediction(
 
 
 def main(
-        device: str,
         dataset_path: str,
+        device: str,
         batch_size: int,
         d_model: int,
         seq_len: int,
@@ -62,44 +62,28 @@ def main(
     train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=True)
 
     val_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'val')
-    val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=collate_fn, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=collate_fn, shuffle=False)
 
-    # Device
     device = torch.device(device)
-
-    # Init model
     vocab_size = train_dataset.vocab_size
     model = model_factory(d_model, seq_len, n_heads, n_layers, dropout, vocab_size)
     model.train()
     model.to(device)
 
-    # Optimizer
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.AdamW(model.parameters())
 
-    pbar_epochs = tqdm(range(n_epochs), position=0)
+    pbar_epochs = tqdm(range(n_epochs), desc="Epochs", position=0)
     for epoch in pbar_epochs:
-        pbar_batch = tqdm(train_loader, total=len(train_loader), position=1)
-        for i, batch in enumerate(pbar_batch):
-            x, y = batch
+        pbar_batches = tqdm(train_loader, total=len(train_loader), desc=f"Training Epoch {epoch+1}", position=1)
+        for x, y in pbar_batches:
             x, y = x.to(device), y.to(device)
-
-            # Zero gradients for every batch
             optimizer.zero_grad()
-
-            # Make predictions for this batch
             outputs = model(x)
-
-            # Compute softmax
             logits = outputs.transpose(1, 2)
-
             loss = torch.nn.functional.cross_entropy(logits, y)
             loss.backward()
-
-            # Adjust learning weights
             optimizer.step()
-
-            # Gather data and report
-            pbar_batch.set_description(f'Loss {loss.item()}')
+            pbar_batches.set_postfix(loss=loss.item())
 
         autoregressive_prediction(model, val_loader, device, train_dataset.idx2token)
 
