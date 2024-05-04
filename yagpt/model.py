@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List, Dict
 
 import lightning as L
 import torch
@@ -240,19 +241,21 @@ class YaGPT(L.LightningModule):
         generated_tokens = torch.tensor(generated_tokens)
         return generated_tokens
 
-    def on_validation_epoch_end(self) -> None:
-        n_samples = 4
-        autoregressive_steps = 64
-
+    def autoregressive_generation(
+            self,
+            data_loader: DataLoader,
+            n_samples: int,
+            autoregressive_steps: int
+    ) -> List[Dict]:
         # Shuffle the validation set
-        idx2token = self.trainer.val_dataloaders.dataset.idx2token
-        random_val_dataloader = DataLoader(self.trainer.val_dataloaders, batch_size=1, shuffle=True)
-        iterator = iter(random_val_dataloader.dataset)
+        idx2token = data_loader.dataset.idx2token
+        random_val_dataloader = DataLoader(data_loader.dataset, batch_size=1, shuffle=True)
 
         data = []
         # Generate text
-        for _ in range(n_samples):
-            x_sample, _ = next(iterator)
+        for sample_id in random_val_dataloader.sampler:
+            x_sample, _ = random_val_dataloader.dataset[sample_id]
+            x_sample = torch.tensor(x_sample).unsqueeze(dim=0)
 
             generated_tokens = self.generate_text(x_sample, autoregressive_steps)
             # Decode the generated tokens
@@ -260,13 +263,37 @@ class YaGPT(L.LightningModule):
             generated_text = ''.join([idx2token[token] for token in generated_tokens.flatten().tolist()])
 
             data.append({
-                'epoch': self.current_epoch,
                 'context': context_text,
                 'generated': generated_text
             })
 
-        self.trainer.logger.log_table(
-            key='generation',
-            columns=list(data[0].keys()),
-            data=[list(d.values()) for d in data]
-        )
+            if len(data) >= n_samples:
+                break
+
+        return data
+
+    def on_validation_epoch_end(self) -> None:
+        n_samples = 4
+        autoregressive_steps = 64
+
+        # Evaluate Training Set
+        splits = [('train', self.trainer.train_dataloader), ('val', self.trainer.val_dataloaders)]
+
+        for split, dataloader in splits:
+            if dataloader is None:
+                continue
+
+            autoregressive_generation = self.autoregressive_generation(
+                dataloader, n_samples, autoregressive_steps
+            )
+
+            generated = [
+                x | {'split': split, 'step': self.global_step, 'epoch': self.current_epoch}
+                for x in autoregressive_generation
+            ]
+
+            self.trainer.logger.log_table(
+                key='generation',
+                columns=list(generated[0].keys()),
+                data=[list(d.values()) for d in generated]
+            )
