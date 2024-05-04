@@ -95,16 +95,12 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
 
         self.linear = torch.nn.Linear(d_model, d_model)
 
-        self.causal_mask = self.causal_mask_factory(seq_len)
+        # Create a causal mask to zero out future positions
+        mask = torch.ones(seq_len, seq_len, dtype=torch.bool, requires_grad=False)
+        mask = torch.tril(mask)
+        self.register_buffer('causal_mask', mask)  # Register as a buffer for device-agnostic
 
         self.dropout = torch.nn.Dropout(dropout)
-
-    @staticmethod
-    def causal_mask_factory(seq_len: int) -> torch.Tensor:
-        mask = torch.ones(seq_len, seq_len, requires_grad=False)
-        mask = torch.tril(mask)
-        mask = mask.view(1, 1, seq_len, seq_len)
-        return mask
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Compute QKV
@@ -124,9 +120,12 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
 
         # Compute attention
         attention = q @ k.transpose(2, 3)
-        attention = attention * (1 / self.d_head)
-        attention_mask = self.causal_mask.repeat(attention.shape[0], attention.shape[1], 1, 1) == 0
-        attention[attention_mask] = - torch.inf
+        attention = attention / (self.d_head ** 0.5)
+
+        # Apply the causal mask by setting future values to -inf
+        attention_mask = self.causal_mask.unsqueeze(0).unsqueeze(0).expand(x.shape[0], self.n_heads, -1, -1)
+        attention = attention.masked_fill(attention_mask == 0, float('-inf'))
+
         attention = torch.nn.functional.softmax(attention, dim=-1)
         attention = attention @ v
 
@@ -223,7 +222,7 @@ class YaGPT(L.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters())
+        return torch.optim.Adam(self.parameters())
 
     def generate_text(self, x: torch.Tensor, n_steps: int) -> torch.Tensor:
         logits = self(x)
@@ -273,8 +272,9 @@ class YaGPT(L.LightningModule):
         return data
 
     def on_validation_epoch_end(self) -> None:
+        return
         n_samples = 4
-        autoregressive_steps = 64
+        autoregressive_steps = 16
 
         # Evaluate Training Set
         splits = [('train', self.trainer.train_dataloader), ('val', self.trainer.val_dataloaders)]
@@ -293,7 +293,15 @@ class YaGPT(L.LightningModule):
             ]
 
             self.trainer.logger.log_table(
-                key='generation',
+                key=f'generation-split-{split}-step-{self.global_step}-epoch-{self.current_epoch}',
                 columns=list(generated[0].keys()),
                 data=[list(d.values()) for d in generated]
             )
+
+            if split == 'train':
+                print(f'\n{"=" * 25} Generated text from {split.upper()} set {"=" * 25}\n')
+                for x in generated:
+                    print(f'> [Context]:\n{x["context"]}\n'
+                          f'> [Generated]:\n{x["generated"]}\n'
+                          f'{"-" * 50}')
+
