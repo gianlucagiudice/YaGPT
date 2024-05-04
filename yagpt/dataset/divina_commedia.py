@@ -56,15 +56,16 @@ class DivinaCommediaDataset(Dataset):
 
     @staticmethod
     def split_dataset(text: str, p: float) -> Tuple[str, str]:
-        chapters = list(re.finditer('CANTO', text))
-        train_chapters_idx = round(len(chapters) * p)
-        train_text_idx = chapters[train_chapters_idx].regs[0][0]
-        train_text, val_text = text[:train_text_idx], text[train_text_idx:]
+        if p <= 1:
+            split_idx = round(len(text) * p)
+        else:
+            split_idx = p
+        train_text, val_text = text[:split_idx], text[split_idx:]
 
         return train_text, val_text
 
     def __len__(self):
-        return len(self.tokens) - self.seq_len
+        return len(self.tokens) - 1
 
     def __getitem__(self, idx) -> Tuple[list[int], list[int]]:
         x = self.tokens[idx: idx + self.seq_len]
