@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
+import lightning as L
 import torch
+from torch.utils.data import DataLoader
 
 
 @dataclass
@@ -171,7 +173,7 @@ class Decoder(torch.nn.Module):
         return x
 
 
-class YaGPT(torch.nn.Module):
+class YaGPT(L.LightningModule):
     def __init__(self, config: YaGPTConfig, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.config = config
@@ -201,3 +203,70 @@ class YaGPT(torch.nn.Module):
         logits = self.head(embeddings)
 
         return logits
+
+    def shared_step(self, batch):
+        x, y = batch
+        logits = self(x)
+        logits = logits.transpose(1, 2)
+        loss = torch.nn.functional.cross_entropy(logits, y)
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        loss = self.shared_step(batch)
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self.shared_step(batch)
+        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.AdamW(self.parameters())
+
+    def generate_text(self, x: torch.Tensor, n_steps: int) -> torch.Tensor:
+        logits = self(x)
+
+        # Generate auto-regressively
+        generated_tokens = []
+        for step in range(n_steps):
+            pred = torch.argmax(logits[0, -1, :]).item()
+            generated_tokens.append(pred)
+            last_id = torch.tensor(pred).unsqueeze(dim=0)
+            x = torch.cat([x[0, 1:], last_id]).unsqueeze(dim=0)
+            logits = self(x)
+
+        # Log the generated text
+        generated_tokens = torch.tensor(generated_tokens)
+        return generated_tokens
+
+    def on_validation_epoch_end(self) -> None:
+        n_samples = 4
+        autoregressive_steps = 64
+
+        # Shuffle the validation set
+        idx2token = self.trainer.val_dataloaders.dataset.idx2token
+        random_val_dataloader = DataLoader(self.trainer.val_dataloaders, batch_size=1, shuffle=True)
+        iterator = iter(random_val_dataloader.dataset)
+
+        data = []
+        # Generate text
+        for _ in range(n_samples):
+            x_sample, _ = next(iterator)
+
+            generated_tokens = self.generate_text(x_sample, autoregressive_steps)
+            # Decode the generated tokens
+            context_text = ''.join([idx2token[token] for token in x_sample.flatten().tolist()])
+            generated_text = ''.join([idx2token[token] for token in generated_tokens.flatten().tolist()])
+
+            data.append({
+                'epoch': self.current_epoch,
+                'context': context_text,
+                'generated': generated_text
+            })
+
+        self.trainer.logger.log_table(
+            key='generation',
+            columns=list(data[0].keys()),
+            data=[list(d.values()) for d in data]
+        )
