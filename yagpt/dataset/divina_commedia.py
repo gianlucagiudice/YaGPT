@@ -20,17 +20,23 @@ class DivinaCommediaDataset(Dataset):
             dataset_path: str,
             seq_len: int,
             split: Literal['train', 'val'],
+            lower_case: bool = True,
             train_ratio: float = 0.7,
     ):
         if split not in ['train', 'val']:
             raise ValueError(f'split must be either "train" or "val", got {split}')
 
         self.full_text, self.split = self.read_dataset(dataset_path, train_ratio, split)
-        #self.tokens = word_tokenize(self.split, language='italian')
+
+        if lower_case:
+            self.full_text = self.full_text.lower()
+            self.split = self.split.lower()
+
         self.tokens = list(self.split)
         self.seq_len = seq_len
+        self.lower_case = lower_case
 
-        self.token2idx = {token: idx for idx, token in enumerate(set(self.full_text))}
+        self.token2idx = {token: idx for idx, token in enumerate(sorted(list(set(self.full_text))))}
         self.idx2token = {idx: token for token, idx in self.token2idx.items()}
         self.vocab_size = len(self.token2idx)
 
