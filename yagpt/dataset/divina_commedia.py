@@ -1,9 +1,8 @@
-import re
 from pathlib import Path
 from typing import Tuple, Literal, List
 
+import tiktoken
 import torch
-from nltk import word_tokenize
 from torch.utils.data import Dataset
 
 
@@ -20,56 +19,59 @@ class DivinaCommediaDataset(Dataset):
             dataset_path: str,
             seq_len: int,
             split: Literal['train', 'val'],
-            lower_case: bool = True,
+            lower_case: bool = False,
             train_ratio: float = 0.7,
     ):
         if split not in ['train', 'val']:
             raise ValueError(f'split must be either "train" or "val", got {split}')
 
-        self.full_text, self.split = self.read_dataset(dataset_path, train_ratio, split)
-
-        if lower_case:
-            self.full_text = self.full_text.lower()
-            self.split = self.split.lower()
-
-        self.tokens = list(self.split)
         self.seq_len = seq_len
         self.lower_case = lower_case
 
-        self.token2idx = {token: idx for idx, token in enumerate(sorted(list(set(self.full_text))))}
+        self.tokenizer = tiktoken.get_encoding('gpt2')
+
+        self.raw_text = self.read_dataset(dataset_path, lower_case)
+        self.tokens = self.tokenize(self.raw_text)
+        self.split_tokens = self.split_dataset(self.tokens, train_ratio, split)
+
+        tokens_set = set(sorted(list(set(self.tokens))))
+        self.token2idx = {token: idx for idx, token in enumerate(tokens_set)}
         self.idx2token = {idx: token for token, idx in self.token2idx.items()}
         self.vocab_size = len(self.token2idx)
 
+    def tokenize(self, text):
+        tokens = self.tokenizer.encode(text)
+        return tokens
+
+    def untokenize(self, tokens):
+        text = self.tokenizer.decode(tokens)
+        return text
+
     @staticmethod
-    def read_dataset(
-            dataset_path: str,
-            train_ratio: float,
-            split: Literal['train', 'val'],
-    ) -> Tuple[str, str]:
+    def read_dataset(dataset_path: str, lower_case: bool) -> str:
         with open(dataset_path, 'r') as f:
             text = f.read()
-
-        train, val = DivinaCommediaDataset.split_dataset(text, train_ratio)
-        split = train if split == 'train' else val
-
-        return text, split
+        if lower_case:
+            text = text.lower()
+        return text
 
     @staticmethod
-    def split_dataset(text: str, p: float) -> Tuple[str, str]:
+    def split_dataset(tokens: List[int], p: float, split: Literal['train', 'val']) -> List[int]:
         if p <= 1:
-            split_idx = round(len(text) * p)
+            split_idx = round(len(tokens) * p)
         else:
             split_idx = p
-        train_text, val_text = text[:split_idx], text[split_idx:]
 
-        return train_text, val_text
+        train_text, val_text = tokens[:split_idx], tokens[split_idx:]
+        split = train_text if split == 'train' else val_text
+        return split
 
     def __len__(self):
-        return len(self.tokens) - 1
+        return len(self.split_tokens) - 1
 
     def __getitem__(self, idx) -> Tuple[list[int], list[int]]:
-        x = self.tokens[idx: idx + self.seq_len]
-        y = self.tokens[idx + 1: idx + 1 + self.seq_len]
+        x = self.split_tokens[idx: idx + self.seq_len]
+        y = self.split_tokens[idx + 1: idx + 1 + self.seq_len]
 
         x = [self.token2idx[token] for token in x]
         y = [self.token2idx[token] for token in y]
