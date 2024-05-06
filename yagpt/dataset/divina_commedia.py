@@ -1,3 +1,5 @@
+import random
+import re
 from pathlib import Path
 from typing import Tuple, Literal, List
 
@@ -20,17 +22,19 @@ class DivinaCommediaDataset(Dataset):
             seq_len: int,
             split: Literal['train', 'val'],
             lower_case: bool = False,
-            train_ratio: float = 0.7,
+            train_ratio: float = 0.9,
+            shuffle_sections: bool = True
     ):
         if split not in ['train', 'val']:
             raise ValueError(f'split must be either "train" or "val", got {split}')
 
         self.seq_len = seq_len
         self.lower_case = lower_case
+        self.shuffle_sections = shuffle_sections
 
         self.tokenizer = tiktoken.get_encoding('gpt2')
 
-        self.raw_text = self.read_dataset(dataset_path, lower_case)
+        self.raw_text = self.read_dataset(dataset_path, lower_case, shuffle_sections)
         self.tokens = self.tokenize(self.raw_text)
         self.split_tokens = self.split_dataset(self.tokens, train_ratio, split)
 
@@ -48,9 +52,14 @@ class DivinaCommediaDataset(Dataset):
         return text
 
     @staticmethod
-    def read_dataset(dataset_path: str, lower_case: bool) -> str:
+    def read_dataset(dataset_path: str, lower_case: bool, shuffle_sections: bool) -> str:
         with open(dataset_path, 'r') as f:
             text = f.read()
+        if shuffle_sections:
+            sections = re.split(r'\n{3}', text)
+            sections = list(map(str.strip, sections))
+            random.shuffle(sections)
+            text = '\n\n\n'.join(sections)
         if lower_case:
             text = text.lower()
         return text
@@ -67,7 +76,7 @@ class DivinaCommediaDataset(Dataset):
         return split
 
     def __len__(self):
-        return len(self.split_tokens) - 1
+        return len(self.split_tokens) - self.seq_len - 1
 
     def __getitem__(self, idx) -> Tuple[list[int], list[int]]:
         x = self.split_tokens[idx: idx + self.seq_len]
@@ -80,10 +89,13 @@ class DivinaCommediaDataset(Dataset):
 
 
 if __name__ == '__main__':
-    dataset_path = str(Path(__file__).parent.parent / 'dataset' / 'inferno.txt')
+    dataset_path = str(Path(__file__).parent.parent.parent / 'dataset' / 'inferno.txt')
 
-    dataset = DivinaCommediaDataset(dataset_path, 512, 'train')
-    print(dataset[0])
+    dataset = DivinaCommediaDataset(dataset_path, 128, 'train')
+    print(len(dataset))
+    tokens = dataset[len(dataset)]
+    print(tokens)
+    print(len(tokens[0]))
     print(dataset.token2idx)
     print(dataset.idx2token)
     print(dataset.vocab_size)
