@@ -1,21 +1,6 @@
-from dataclasses import dataclass
-from typing import List, Dict
-
-import lightning as L
 import torch
-from torch.utils.data import DataLoader
 
-
-@dataclass
-class YaGPTConfig:
-    seq_len: int
-    d_model: int
-    n_heads: int
-    n_layers: int
-    d_ff: int
-    dropout: float
-
-    vocab_size: int
+from yagpt.model import YaGPTConfig
 
 
 class Embeddings(torch.nn.Module):
@@ -173,7 +158,7 @@ class Decoder(torch.nn.Module):
         return x
 
 
-class YaGPT(L.LightningModule):
+class YaGPT(torch.nn.Module):
     def __init__(self, config: YaGPTConfig, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.config = config
@@ -192,37 +177,18 @@ class YaGPT(L.LightningModule):
         self.head = torch.nn.Linear(config.d_model, config.vocab_size)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        # Embedding Layer
         embeddings = self.embeddings(input_ids)
         embeddings = self.pos_encoding(embeddings)
         embeddings = self.embeddings_dropout(embeddings)
-
+        # Decoder
         embeddings = self.decoder(embeddings)
-
+        # Normalization
         embeddings = self.normalization(embeddings)
-
+        # Head
         logits = self.head(embeddings)
 
         return logits
-
-    def shared_step(self, batch):
-        x, y = batch
-        logits = self(x)
-        logits = logits.transpose(1, 2)
-        loss = torch.nn.functional.cross_entropy(logits, y)
-        return loss
-
-    def training_step(self, batch, batch_idx):
-        loss = self.shared_step(batch)
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        loss = self.shared_step(batch)
-        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return loss
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters())
 
     def generate_text(self, x: torch.Tensor, n_steps: int) -> torch.Tensor:
         logits = self(x)
