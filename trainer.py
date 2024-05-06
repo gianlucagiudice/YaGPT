@@ -1,26 +1,29 @@
 from pathlib import Path
+from typing import Optional
 
-import lightning as L
+import lightning
 from lightning.pytorch.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from yagpt import model_factory
+from yagpt.callback.train_gen_callback import TrainingGenerationCallback
 from yagpt.dataset.divina_commedia import DivinaCommediaDataset, collate_fn
 from yagpt.model import YaGPT
 
 
 def main(
         dataset_path: str,
-        batch_size: int,
-        d_model: int,
-        seq_len: int,
-        n_heads: int,
-        n_layers: int,
-        train_ratio: float = 0.7,
+        batch_size: int = 16,
+        d_model: int = 384,
+        seq_len: int = 192,
+        n_heads: int = 8,
+        n_layers: int = 8,
+        train_ratio: float = 0.9,
         dropout: float = 0.1,
         n_epochs: int = 50,
-        val_check_interval: int = 500,
-        limit_val_batches: int = 30,
+        val_check_interval: Optional[int] = None,
+        limit_val_batches: Optional[int] = None,
+        log_every_n_steps: int = 5,
 ):
     # Load datasets
     train_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'train', train_ratio=train_ratio)
@@ -39,14 +42,16 @@ def main(
     model: YaGPT = model_factory(d_model, seq_len, n_heads, n_layers, dropout, vocab_size)
 
     # Train model
-    trainer = L.Trainer(
+    trainer = lightning.Trainer(
         max_epochs=n_epochs,
-        logger=L.pytorch.loggers.WandbLogger(project="YaGPT", log_model='all'),
+        log_every_n_steps=log_every_n_steps,
+        logger=lightning.pytorch.loggers.WandbLogger(project="YaGPT", log_model='all'),
         val_check_interval=val_check_interval,
         limit_val_batches=limit_val_batches,
         callbacks=[
-            L.pytorch.callbacks.ModelCheckpoint(save_last=True),
-            L.pytorch.callbacks.EarlyStopping(monitor='val_loss', patience=5),
+            lightning.pytorch.callbacks.ModelCheckpoint(dirpath='checkpoints', monitor='val_loss', mode='min'),
+            TrainingGenerationCallback(n_samples=4, autoregressive_steps=16),
+            lightning.pytorch.callbacks.EarlyStopping(monitor='val_loss', patience=5),
         ],
     )
     trainer.fit(model, train_loader, val_loader)
@@ -54,13 +59,4 @@ def main(
 
 if __name__ == '__main__':
     dataset_path = str(Path(__file__).parent / 'dataset' / 'inferno.txt')
-    main(
-        dataset_path=dataset_path,
-        batch_size=16,
-        d_model=512,
-        seq_len=512,
-        n_heads=4,
-        n_layers=8,
-        dropout=0.1,
-        train_ratio=0.7,
-    )
+    main(dataset_path=dataset_path)
