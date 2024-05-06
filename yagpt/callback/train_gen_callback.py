@@ -59,7 +59,13 @@ class TrainingGenerationCallback(Callback):
             )
 
             generated = [
-                x | {'split': split, 'step': trainer.global_step, 'epoch': trainer.current_epoch}
+                {
+                    'context': dataloader.dataset.untokenize(x['context']),
+                    'generated': dataloader.dataset.untokenize(x['generated']),
+                    'split': split,
+                    'step': trainer.global_step,
+                    'epoch': trainer.current_epoch
+                }
                 for x in autoregressive_generation
             ]
 
@@ -72,8 +78,6 @@ class TrainingGenerationCallback(Callback):
             print(f'\n{"=" * 25} Generated text from {split.upper()} set {"=" * 25}')
             for x in generated:
                 context, generated = x['context'], x['generated']
-                context = dataloader.dataset.untokenize(context)
-                generated = dataloader.dataset.untokenize(generated)
 
                 print(f'> [Context]:\n{context}\n'
                       f'> [Generated]:\n{generated}\n'
