@@ -1,4 +1,4 @@
-from yagpt.model import YaGPTConfig, YaGPT
+from yagpt.model import YaGPTConfig, YaGPTWrapper
 
 
 def model_factory(
@@ -8,7 +8,8 @@ def model_factory(
         n_layers: int,
         dropout: float,
         vocab_size: int,
-):
+) -> YaGPTWrapper:
+
     config = YaGPTConfig(
         seq_len=seq_len,
         d_model=d_model,
@@ -19,6 +20,6 @@ def model_factory(
         vocab_size=vocab_size
     )
 
-    model: YaGPT = YaGPT(config)
+    model: YaGPTWrapper = YaGPTWrapper(config)
 
     return model

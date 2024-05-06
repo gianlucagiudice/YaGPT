@@ -5,7 +5,7 @@ import torch
 from lightning.pytorch.callbacks import Callback
 from torch.utils.data import DataLoader
 
-from yagpt.model import YaGPT
+from yagpt.model import YaGPTWrapper
 
 
 class TrainingGenerationCallback(Callback):
@@ -15,7 +15,7 @@ class TrainingGenerationCallback(Callback):
 
     @staticmethod
     def autoregressive_generation(
-            pl_module: YaGPT,
+            pl_module: YaGPTWrapper,
             data_loader: DataLoader,
             n_samples: int,
             autoregressive_steps: int
@@ -31,7 +31,7 @@ class TrainingGenerationCallback(Callback):
             x_sample, _ = random_val_dataloader.dataset[sample_id]
             x_sample = torch.tensor(x_sample).unsqueeze(dim=0)
 
-            generated_tokens = pl_module.generate_text(x_sample, autoregressive_steps)
+            generated_tokens = pl_module.model.generate_text(x_sample, autoregressive_steps)
             # Decode the generated tokens
             context_text = [idx2token[token] for token in x_sample.flatten().tolist()]
             generated_text = [idx2token[token] for token in generated_tokens.flatten().tolist()]
@@ -46,7 +46,7 @@ class TrainingGenerationCallback(Callback):
 
         return data
 
-    def on_validation_epoch_end(self, trainer: lightning.Trainer, pl_module: YaGPT):
+    def on_validation_epoch_end(self, trainer: lightning.Trainer, pl_module: YaGPTWrapper):
         # Evaluate Training Set
         splits = [('train', trainer.train_dataloader), ('val', trainer.val_dataloaders)]
 
