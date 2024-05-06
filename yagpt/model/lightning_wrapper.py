@@ -5,9 +5,10 @@ from yagpt.model import YaGPTConfig, YaGPT
 
 
 class YaGPTWrapper(lightning.LightningModule):
-    def __init__(self, config: YaGPTConfig, *args, **kwargs):
+    def __init__(self, config: YaGPTConfig, lr: float = 1e-3, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model = YaGPT(config)
+        self.lr = lr
 
     def forward(self, x):
         return self.model(x)
@@ -30,4 +31,4 @@ class YaGPTWrapper(lightning.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters())
+        return torch.optim.Adam(self.model.parameters(), lr=self.lr)
