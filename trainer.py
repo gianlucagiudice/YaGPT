@@ -14,10 +14,10 @@ from yagpt.model import YaGPTWrapper
 def main(
         dataset_path: str,
         batch_size: int = 16,
-        d_model: int = 448,
+        d_model: int = 512,
         seq_len: int = 192,
         n_heads: int = 8,
-        n_layers: int = 10,
+        n_layers: int = 12,
         train_ratio: float = 0.9,
         dropout: float = 0.1,
         n_epochs: int = 10,
