@@ -5,7 +5,7 @@ import lightning
 from lightning.pytorch.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
-from yagpt import model_factory
+from yagpt.utils import model_factory
 from yagpt.callback import TrainingGenerationCallback
 from yagpt.dataset import DivinaCommediaDataset, collate_fn
 from yagpt.model import YaGPTWrapper
