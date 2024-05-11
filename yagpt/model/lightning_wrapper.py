@@ -5,10 +5,19 @@ from yagpt.model import YaGPTConfig, YaGPT
 
 
 class YaGPTWrapper(lightning.LightningModule):
-    def __init__(self, config: YaGPTConfig, lr: float = 1e-3, *args, **kwargs):
+    def __init__(
+            self,
+            config: YaGPTConfig,
+            lr: float = 1e-3,
+            scheduler_t0: int = 300,
+            scheduler_t_mult: int = 1,
+            *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.model = YaGPT(config)
         self.lr = lr
+        self.scheduler_t0 = scheduler_t0
+        self.scheduler_t_mult = scheduler_t_mult
 
     def forward(self, x):
         return self.model(x)
@@ -31,4 +40,7 @@ class YaGPTWrapper(lightning.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer, T_0=self.scheduler_t0, T_mult=self.scheduler_t_mult)
+        return [optimizer], [{'scheduler': scheduler, 'interval': 'step'}]
