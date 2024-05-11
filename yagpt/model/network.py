@@ -1,6 +1,18 @@
+from dataclasses import dataclass
+
 import torch
 
-from yagpt.model import YaGPTConfig
+
+@dataclass
+class YaGPTConfig:
+    seq_len: int
+    d_model: int
+    n_heads: int
+    n_layers: int
+    d_ff: int
+    dropout: float
+
+    vocab_size: int
 
 
 class Embeddings(torch.nn.Module):

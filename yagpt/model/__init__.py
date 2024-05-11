@@ -1,3 +1,2 @@
-from .config import YaGPTConfig
-from .network import YaGPT
+from .network import YaGPT, YaGPTConfig
 from .lightning_wrapper import YaGPTWrapper
