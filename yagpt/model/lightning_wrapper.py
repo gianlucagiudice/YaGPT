@@ -18,6 +18,7 @@ class YaGPTWrapper(lightning.LightningModule):
         self.lr = lr
         self.scheduler_t0 = scheduler_t0
         self.scheduler_t_mult = scheduler_t_mult
+        self.save_hyperparameters()
 
     def forward(self, x):
         return self.model(x)
