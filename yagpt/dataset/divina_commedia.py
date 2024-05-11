@@ -16,6 +16,8 @@ def collate_fn(batch: List[Tuple[list[int], list[int]]]) -> Tuple[torch.Tensor, 
 
 class DivinaCommediaDataset(Dataset):
 
+    tokenizer = tiktoken.get_encoding('gpt2')
+
     def __init__(
             self,
             dataset_path: str,
@@ -31,8 +33,6 @@ class DivinaCommediaDataset(Dataset):
         self.seq_len = seq_len
         self.lower_case = lower_case
         self.shuffle_sections = shuffle_sections
-
-        self.tokenizer = tiktoken.get_encoding('gpt2')
 
         self.raw_text = self.read_dataset(dataset_path, lower_case, shuffle_sections)
         self.tokens = self.tokenize(self.raw_text)
