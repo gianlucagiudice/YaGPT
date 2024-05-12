@@ -21,9 +21,10 @@ def main(
         n_heads: int = 8,
         n_layers: int = 12,
         train_ratio: float = 0.9,
-        dropout: float = 0.1,
+        dropout: float = 0.2,
         # Training parameters
         n_epochs: int = 10,
+        accelerator: str = 'auto',
         val_check_interval: Optional[int] = None,
         limit_val_batches: Optional[int] = None,
         log_every_n_steps: int = 5,
@@ -72,6 +73,7 @@ def main(
             LearningRateMonitor(logging_interval='step'),
             TrainingGenerationCallback(n_samples=4, autoregressive_steps=32),
         ],
+        accelerator=accelerator,
         gradient_clip_val=gradient_clip_val,
         detect_anomaly=True
     )
