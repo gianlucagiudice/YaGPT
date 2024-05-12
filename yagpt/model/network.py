@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Iterable
 
 import torch
 
@@ -202,9 +203,10 @@ class YaGPT(torch.nn.Module):
 
         return logits
 
-    def generate_text(self, x: torch.Tensor, n_steps: int, stream: bool = False) -> torch.Tensor:
+    def generate_text(self, x: torch.Tensor, n_steps: int) -> Iterable[int]:
+        assert x.dim() == 2 and x.shape[0] == 1, ValueError('Input tensor should have shape (1, N)')
+
         # Generate auto-regressively
-        generated_tokens = []
         for step in range(n_steps):
             # Forward pass
             x_forward = x
@@ -217,15 +219,10 @@ class YaGPT(torch.nn.Module):
             logits = self(x_forward)
 
             # Sample the next token
-            pred = torch.argmax(logits[0, x.shape[1], :]).item()
-            generated_tokens.append(pred)
-            last_id = torch.tensor(pred).unsqueeze(dim=0)
+            last_pos = min(self.config.seq_len, x.shape[1])
 
-            if stream:
-                yield last_id
+            next_token_pred = torch.argmax(logits[0, last_pos - 1, :], keepdim=True)
+            x = torch.cat([x[0, :last_pos], next_token_pred]).unsqueeze(dim=0)
 
-            x = torch.cat([x[0, 1:], last_id]).unsqueeze(dim=0)
-
-        # Log the generated text
-        generated_tokens = torch.tensor(generated_tokens)
-        return generated_tokens
+            next_token = next_token_pred.item()
+            yield next_token
