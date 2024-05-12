@@ -95,7 +95,7 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
         # Create a causal mask to zero out future positions
         mask = torch.ones(seq_len, seq_len, dtype=torch.bool, requires_grad=False)
         mask = torch.tril(mask)
-        self.register_buffer('causal_mask', mask)  # Register as a buffer for device-agnostic
+        self.register_buffer('causal_mask', mask)
 
         self.dropout = torch.nn.Dropout(dropout)
 
@@ -202,17 +202,29 @@ class YaGPT(torch.nn.Module):
 
         return logits
 
-    def generate_text(self, x: torch.Tensor, n_steps: int) -> torch.Tensor:
-        logits = self(x)
-
+    def generate_text(self, x: torch.Tensor, n_steps: int, stream: bool = False) -> torch.Tensor:
         # Generate auto-regressively
         generated_tokens = []
         for step in range(n_steps):
-            pred = torch.argmax(logits[0, -1, :]).item()
+            # Forward pass
+            x_forward = x
+            if x_forward.shape[1] > self.config.seq_len:
+                x_forward = x_forward[:, -self.config.seq_len:]
+            if x_forward.shape[1] < self.config.seq_len:
+                padding = torch.zeros(x_forward.shape[0], self.config.seq_len - x_forward.shape[1], dtype=torch.long)
+                x_forward = torch.cat([x_forward, padding], dim=1)
+
+            logits = self(x_forward)
+
+            # Sample the next token
+            pred = torch.argmax(logits[0, x.shape[1], :]).item()
             generated_tokens.append(pred)
             last_id = torch.tensor(pred).unsqueeze(dim=0)
+
+            if stream:
+                yield last_id
+
             x = torch.cat([x[0, 1:], last_id]).unsqueeze(dim=0)
-            logits = self(x)
 
         # Log the generated text
         generated_tokens = torch.tensor(generated_tokens)
