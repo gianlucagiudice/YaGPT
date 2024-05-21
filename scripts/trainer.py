@@ -24,7 +24,7 @@ def train(
         dropout: float = 0.2,
         # Training parameters
         max_epochs: int = 10,
-        max_steps: Optional[int] = None,
+        max_steps: int = -1,
         accelerator: str = 'auto',
         val_check_interval: Optional[int] = None,
         limit_val_batches: Optional[int] = None,
