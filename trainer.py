@@ -23,7 +23,8 @@ def main(
         train_ratio: float = 0.9,
         dropout: float = 0.2,
         # Training parameters
-        n_epochs: int = 10,
+        max_epochs: int = 10,
+        max_steps: Optional[int] = None,
         accelerator: str = 'auto',
         val_check_interval: Optional[int] = None,
         limit_val_batches: Optional[int] = None,
@@ -62,7 +63,8 @@ def main(
 
     # Train model
     trainer = lightning.Trainer(
-        max_epochs=n_epochs,
+        max_epochs=max_epochs,
+        max_steps=max_steps,
         log_every_n_steps=log_every_n_steps,
         logger=lightning.pytorch.loggers.WandbLogger(project="YaGPT", log_model='all'),
         val_check_interval=val_check_interval,
