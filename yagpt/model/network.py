@@ -220,8 +220,7 @@ class YaGPT(torch.nn.Module):
 
             # Sample the next token
             last_pos = min(self.config.seq_len, x.shape[1])
-
-            next_token_pred = torch.argmax(logits[0, last_pos - 1, :], keepdim=True)
+            next_token_pred = torch.argmax(logits[0, last_pos - 1, :], keepdim=True).to(x.device)
             x = torch.cat([x[0, :last_pos], next_token_pred]).unsqueeze(dim=0)
 
             next_token = next_token_pred.item()
