@@ -11,7 +11,7 @@ from yagpt.dataset import DivinaCommediaDataset, collate_fn
 from yagpt.model import YaGPTWrapper, YaGPTConfig
 
 
-def main(
+def train(
         # Dataset
         dataset_path: str,
         # Model parameters
@@ -83,4 +83,4 @@ def main(
 
 
 if __name__ == '__main__':
-    fire.Fire(main)
+    fire.Fire(train)
