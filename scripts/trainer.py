@@ -17,9 +17,9 @@ def train(
         # Model parameters
         batch_size: int = 16,
         d_model: int = 384,
-        seq_len: int = 192,
-        n_heads: int = 8,
-        n_layers: int = 8,
+        seq_len: int = 256,
+        n_heads: int = 6,
+        n_layers: int = 6,
         train_ratio: float = 0.8,
         dropout: float = 0.3,
         # Training parameters
@@ -32,9 +32,14 @@ def train(
         gradient_clip_val: float = 1.0,
         early_stopping_patience: int = 3,
         # Optimizer parameters
-        lr: float = 1e-3,
-        scheduler_t0: int = 300,
+        lr: float = 1e-2,
+        scheduler_t0: int = 150,
         scheduler_t_mult: int = 1,
+        # Generation parameters
+        n_samples: int = 4,
+        autoregressive_steps: int = 32,
+        generation_top_k: int = 5,
+        temperature: float = 1.25,
 ):
     # Load datasets
     train_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'train', train_ratio=train_ratio)
@@ -73,7 +78,10 @@ def train(
             ModelCheckpoint(dirpath='checkpoints', monitor='val_loss', mode='min'),
             EarlyStopping(monitor='val_loss', patience=early_stopping_patience, mode='min'),
             LearningRateMonitor(logging_interval='step'),
-            TrainingGenerationCallback(n_samples=4, autoregressive_steps=32),
+            TrainingGenerationCallback(
+                n_samples=n_samples, autoregressive_steps=autoregressive_steps,
+                top_k=generation_top_k, temperature=temperature
+            ),
         ],
         accelerator=accelerator,
         gradient_clip_val=gradient_clip_val,
