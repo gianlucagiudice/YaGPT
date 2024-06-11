@@ -15,12 +15,12 @@ class YaDataset(Dataset):
             split: Literal['train', 'val'],
             seq_len: int,
     ):
-        self.tokens = self._read_tokens_split(data_dir, split)
-        self.vocab_size = self.tokenizer.n_vocab
+        self.tokens, self.id_to_token, self.token_to_id = self._read_split(data_dir, split)
+        self.vocab_size = len(self.id_to_token)
         self.seq_len = seq_len
 
     @staticmethod
-    def _read_tokens_split(data_dir, split):
+    def _read_split(data_dir, split):
         match split:
             case 'train':
                 file_path = os.path.join(data_dir, 'train.bin')
@@ -28,22 +28,22 @@ class YaDataset(Dataset):
                 file_path = os.path.join(data_dir, 'val.bin')
             case _:
                 raise ValueError(f'split must be either "train" or "val", got {split}')
-        tokens = YaDataset.load_from_bin(file_path)
+        data = torch.load(file_path)
+        tokens, id_to_token, token_to_id = data['tokens'], data['id_to_token'], data['token_to_id']
+        return tokens, id_to_token, token_to_id
+
+    def tokenize(self, text: str):
+        # Tokenize using tokenizer
+        tokens = self.tokenizer.encode(text)
+        # Remap tokens
+        tokens = [self.token_to_id[t] for t in tokens]
         return tokens
 
-    @staticmethod
-    def load_from_bin(file_path):
-        tokens = torch.load(file_path)
-        return tokens
-
-    @classmethod
-    def tokenize(cls, text):
-        tokens = cls.tokenizer.encode(text)
-        return tokens
-
-    @classmethod
-    def untokenize(cls, tokens):
-        text = cls.tokenizer.decode(tokens)
+    def untokenize(self, tokens: List[int]) -> str:
+        # Tokenize using tokenizer
+        tokens = [self.id_to_token[t] for t in tokens]
+        # Remap tokens
+        text = self.tokenizer.decode(tokens)
         return text
 
     @staticmethod
@@ -55,9 +55,10 @@ class YaDataset(Dataset):
     def __len__(self):
         return len(self.tokens) - self.seq_len - 1
 
-    def __getitem__(self, idx) -> Tuple[list[int], list[int]]:
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         x = self.tokens[idx: idx + self.seq_len]
         y = self.tokens[idx + 1: idx + 1 + self.seq_len]
+        x, y = torch.tensor(x).long(), torch.tensor(y).long()
 
         return x, y
 
@@ -69,10 +70,19 @@ if __name__ == '__main__':
 
     dataset = YaDataset(dataset_path, 'train', 128)
 
-    tokens_sample = dataset[0]
+    id_sample = 128
+    tokens_sample = dataset[id_sample]
+
+    n_tokens = 8
+    xx = tokens_sample[0][:n_tokens].tolist()
+    yy = tokens_sample[1][:n_tokens].tolist()
 
     print(f"Dataset size: {len(dataset)}")
     print(f"Vocab size: {dataset.vocab_size}")
-    print(f"Tokens sample ({len(tokens_sample[0])}):\n"
-          f"\tTrain:\t{tokens_sample[0][:16]} ..."
-          f"\n\tVal:\t{tokens_sample[1][:16]} ...")
+    print(f"\nTokens sample ({len(tokens_sample[0])}):\n"
+          f"\tX:\t{xx} ...\n"
+          f"\tY:\t{yy} ...\n"
+          f"Untokenized sample:\n"
+          f"\tX:\n```text\n\t{dataset.untokenize(xx)}\n```\n"
+          f"\tY:\n```text\n\t{dataset.untokenize(yy)}\n```\n"
+          )

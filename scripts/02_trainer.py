@@ -7,7 +7,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from yagpt.callback import TrainingGenerationCallback
-from yagpt.dataset import DivinaCommediaDataset, collate_fn
+from yagpt.dataset import YaDataset
 from yagpt.model import YaGPTWrapper, YaGPTConfig
 
 
@@ -16,11 +16,11 @@ def train(
         dataset_path: str,
         # Model parameters
         batch_size: int = 16,
-        d_model: int = 384,
-        seq_len: int = 256,
+        d_model: int = 156,
+        seq_len: int = 128,
         n_heads: int = 6,
         n_layers: int = 6,
-        train_ratio: float = 0.8,
+        dff_factor: int = 2,
         dropout: float = 0.3,
         # Training parameters
         max_epochs: int = 10,
@@ -42,22 +42,22 @@ def train(
         temperature: float = 1.25,
 ):
     # Load datasets
-    train_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'train', train_ratio=train_ratio)
+    train_dataset = YaDataset(dataset_path, 'train', seq_len)
     train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, collate_fn=collate_fn,
+        train_dataset, batch_size=batch_size,
         shuffle=True, num_workers=8, persistent_workers=True
     )
 
-    val_dataset = DivinaCommediaDataset(dataset_path, seq_len, 'val', train_ratio=train_ratio)
+    val_dataset = YaDataset(dataset_path, 'val', seq_len)
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, collate_fn=collate_fn,
+        val_dataset, batch_size=batch_size,
         shuffle=False, num_workers=8, persistent_workers=True
     )
 
     model_config = YaGPTConfig(
         seq_len=seq_len,
         d_model=d_model,
-        d_ff=d_model * 4,
+        d_ff=d_model * dff_factor,
         n_heads=n_heads,
         n_layers=n_layers,
         dropout=dropout,
