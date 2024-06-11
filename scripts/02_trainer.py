@@ -15,12 +15,12 @@ def train(
         # Dataset
         dataset_path: str,
         # Model parameters
-        batch_size: int = 16,
-        d_model: int = 156,
-        seq_len: int = 128,
+        batch_size: int = 128,
+        d_model: int = 264,
+        seq_len: int = 160,
         n_heads: int = 6,
         n_layers: int = 6,
-        dff_factor: int = 2,
+        dff_factor: int = 4,
         dropout: float = 0.3,
         # Training parameters
         max_epochs: int = 10,
