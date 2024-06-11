@@ -1,12 +1,12 @@
 import enum
 from typing import List, Dict
 
-import wandb
 import lightning
-import torch
+import wandb
 from lightning.pytorch.callbacks import Callback
 from torch.utils.data import DataLoader
 
+from yagpt.dataset import YaDataset
 from yagpt.model import YaGPTWrapper
 
 
@@ -29,12 +29,20 @@ class TableColumns(enum.Enum):
 
 
 class TrainingGenerationCallback(Callback):
-    def __init__(self, n_samples: int = 4, autoregressive_steps: int = 16, top_k: int = 5, temperature: float = 1.0):
+    def __init__(
+            self,
+            id_to_token: dict[int, int],
+            n_samples: int = 4,
+            autoregressive_steps: int = 16,
+            top_k: int = 5,
+            temperature: float = 1.0
+    ):
         self.n_samples = n_samples
         self.top_k = top_k
         self.temperature = temperature
         self.autoregressive_steps = autoregressive_steps
         self.table = wandb.Table(columns=TableColumns.get_values())
+        self.id_to_token = id_to_token
 
     @staticmethod
     def autoregressive_generation(
@@ -43,10 +51,10 @@ class TrainingGenerationCallback(Callback):
             n_samples: int,
             autoregressive_steps: int,
             top_k: int,
-            temperature: float
+            temperature: float,
+            id_to_token: dict[int, int]
     ) -> List[Dict]:
         # Shuffle the validation set
-        idx2token = data_loader.dataset.idx2token
         random_val_dataloader = DataLoader(data_loader.dataset, batch_size=1, shuffle=True)
 
         data: List[dict] = []
@@ -54,14 +62,14 @@ class TrainingGenerationCallback(Callback):
         # Generate text
         for sample_id in random_val_dataloader.sampler:
             x_sample, _ = random_val_dataloader.dataset[sample_id]
-            x_sample = torch.tensor(x_sample).unsqueeze(dim=0)
+            x_sample = x_sample.unsqueeze(dim=0)
 
             tokens_iterator = pl_module.model.generate_text(
                 x_sample, autoregressive_steps, top_k=top_k, temperature=temperature)
 
             # Decode the generated tokens
-            context_text = [idx2token[token] for token in x_sample.flatten().tolist()]
-            generated_text = [idx2token[token] for token in tokens_iterator]
+            context_text = YaDataset.untokenize_helper(x_sample.flatten().tolist(), id_to_token)
+            generated_text = YaDataset.untokenize_helper(list(tokens_iterator), id_to_token)
 
             data.append({
                 'context': context_text,
@@ -82,13 +90,14 @@ class TrainingGenerationCallback(Callback):
                 continue
 
             autoregressive_generation = self.autoregressive_generation(
-                pl_module, dataloader, self.n_samples, self.autoregressive_steps, self.top_k, self.temperature
+                pl_module, dataloader, self.n_samples, self.autoregressive_steps,
+                self.top_k, self.temperature, self.id_to_token
             )
 
             generated = [
                 {
-                    TableColumns.CONTEXT.value: dataloader.dataset.untokenize(x['context']),
-                    TableColumns.GENERATED.value: dataloader.dataset.untokenize(x['generated']),
+                    TableColumns.CONTEXT.value: x['context'],
+                    TableColumns.GENERATED.value: x['generated'],
                     TableColumns.SPLIT.value: split,
                     TableColumns.STEP.value: trainer.global_step,
                     TableColumns.EPOCH.value: trainer.current_epoch
