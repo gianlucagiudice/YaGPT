@@ -203,7 +203,13 @@ class YaGPT(torch.nn.Module):
 
         return logits
 
-    def generate_text(self, x: torch.Tensor, n_steps: int) -> Iterable[int]:
+    def generate_text(
+            self,
+            x: torch.Tensor,
+            n_steps: int,
+            top_k: int = 5,
+            temperature: float = 1.0
+    ) -> Iterable[int]:
         assert x.dim() == 2 and x.shape[0] == 1, ValueError('Input tensor should have shape (1, N)')
 
         # Generate auto-regressively
@@ -220,7 +226,13 @@ class YaGPT(torch.nn.Module):
 
             # Sample the next token
             last_pos = min(self.config.seq_len, x.shape[1])
-            next_token_pred = torch.argmax(logits[0, last_pos - 1, :], keepdim=True).to(x.device)
+
+            pred_head = logits[0, last_pos - 1, :] / temperature
+            pred_head = torch.nn.functional.log_softmax(pred_head, dim=-1)
+            top_k_pred = torch.topk(pred_head, top_k, dim=-1)
+            next_token_pred = torch.multinomial(torch.exp(top_k_pred.values), 1)
+            next_token_pred = next_token_pred.to(x.device)
+
             x = torch.cat([x[0, :last_pos], next_token_pred]).unsqueeze(dim=0)
 
             next_token = next_token_pred.item()
