@@ -33,24 +33,22 @@ class YaDataset(Dataset):
         return tokens, id_to_token, token_to_id
 
     def tokenize(self, text: str):
-        # Tokenize using tokenizer
-        tokens = self.tokenizer.encode(text)
-        # Remap tokens
-        tokens = [self.token_to_id[t] for t in tokens]
-        return tokens
+        return self.tokenize_helper(text, self.token_to_id)
 
     def untokenize(self, tokens: List[int]) -> str:
-        # Tokenize using tokenizer
-        tokens = [self.id_to_token[t] for t in tokens]
-        # Remap tokens
-        text = self.tokenizer.decode(tokens)
-        return text
+        return self.untokenize_helper(tokens, self.id_to_token)
 
-    @staticmethod
-    def collate_fn(batch: List[Tuple[list[int], list[int]]]) -> Tuple[torch.Tensor, torch.Tensor]:
-        batch = torch.tensor(batch).long()
-        x, y = batch[:, 0], batch[:, 1]
-        return x, y
+    @classmethod
+    def tokenize_helper(cls, text: str, token_to_id: dict[int, int]) -> list[int]:
+        tokens = cls.tokenizer.encode(text)
+        tokens = [token_to_id[t] for t in tokens]
+        return tokens
+
+    @classmethod
+    def untokenize_helper(cls, tokens: list[int], id_to_token: dict[int, int]) -> str:
+        tokens = [id_to_token[t] for t in tokens]
+        text = cls.tokenizer.decode(tokens)
+        return text
 
     def __len__(self):
         return len(self.tokens) - self.seq_len - 1
