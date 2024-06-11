@@ -28,6 +28,14 @@ def split_dataset(tokens, train_ratio=0.9):
     return train_tokens, val_tokens
 
 
+def remap_tokens(tokens):
+    unique_tokens = list(set(tokens))
+    id_to_token = {i: t for i, t in enumerate(unique_tokens)}
+    token_to_id = {t: i for i, t in id_to_token.items()}
+
+    return id_to_token, token_to_id
+
+
 def main(
         dataset_path: Optional[str] = None,
         output_dir: str = os.path.dirname(__file__)
@@ -35,14 +43,22 @@ def main(
     if dataset_path is None:
         dataset_path = os.path.join(os.path.dirname(__file__), 'inferno.txt')
 
+    # Read dataset
     raw_text = read_dataset(dataset_path, lower_case=False, shuffle_sections=True)
-    tokens = YaDataset.tokenize(raw_text)
+    # Tokenize dataset
+    tokens = YaDataset.tokenizer.encode(raw_text)
+    # Remap tokens
+    id_to_token, token_to_id = remap_tokens(tokens)
+    tokens = [token_to_id[t] for t in tokens]
+    # Split dataset
     train_tokens, val_tokens = split_dataset(tokens)
-
+    # Save dataset
     os.makedirs(output_dir, exist_ok=True)
 
-    torch.save(train_tokens, os.path.join(output_dir, 'train.bin'))
-    torch.save(val_tokens, os.path.join(output_dir, 'val.bin'))
+    train_data = dict(tokens=train_tokens, id_to_token=id_to_token, token_to_id=token_to_id)
+    torch.save(train_data, os.path.join(output_dir, 'train.bin'))
+    val_data = dict(tokens=val_tokens, id_to_token=id_to_token, token_to_id=token_to_id)
+    torch.save(val_data, os.path.join(output_dir, 'val.bin'))
 
 
 if __name__ == '__main__':
