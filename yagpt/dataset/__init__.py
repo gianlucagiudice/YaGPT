@@ -1,1 +1,1 @@
-from .divina_commedia import DivinaCommediaDataset, collate_fn
+from .dataset import YaDataset
