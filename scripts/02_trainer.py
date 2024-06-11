@@ -80,7 +80,7 @@ def train(
             LearningRateMonitor(logging_interval='step'),
             TrainingGenerationCallback(
                 n_samples=n_samples, autoregressive_steps=autoregressive_steps,
-                top_k=generation_top_k, temperature=temperature
+                top_k=generation_top_k, temperature=temperature, id_to_token=train_dataset.id_to_token
             ),
         ],
         accelerator=accelerator,
