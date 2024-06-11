@@ -29,8 +29,10 @@ class TableColumns(enum.Enum):
 
 
 class TrainingGenerationCallback(Callback):
-    def __init__(self, n_samples: int = 4, autoregressive_steps: int = 16):
+    def __init__(self, n_samples: int = 4, autoregressive_steps: int = 16, top_k: int = 5, temperature: float = 1.0):
         self.n_samples = n_samples
+        self.top_k = top_k
+        self.temperature = temperature
         self.autoregressive_steps = autoregressive_steps
         self.table = wandb.Table(columns=TableColumns.get_values())
 
@@ -39,7 +41,9 @@ class TrainingGenerationCallback(Callback):
             pl_module: YaGPTWrapper,
             data_loader: DataLoader,
             n_samples: int,
-            autoregressive_steps: int
+            autoregressive_steps: int,
+            top_k: int,
+            temperature: float
     ) -> List[Dict]:
         # Shuffle the validation set
         idx2token = data_loader.dataset.idx2token
@@ -52,7 +56,9 @@ class TrainingGenerationCallback(Callback):
             x_sample, _ = random_val_dataloader.dataset[sample_id]
             x_sample = torch.tensor(x_sample).unsqueeze(dim=0)
 
-            tokens_iterator = pl_module.model.generate_text(x_sample, autoregressive_steps)
+            tokens_iterator = pl_module.model.generate_text(
+                x_sample, autoregressive_steps, top_k=top_k, temperature=temperature)
+
             # Decode the generated tokens
             context_text = [idx2token[token] for token in x_sample.flatten().tolist()]
             generated_text = [idx2token[token] for token in tokens_iterator]
@@ -76,7 +82,7 @@ class TrainingGenerationCallback(Callback):
                 continue
 
             autoregressive_generation = self.autoregressive_generation(
-                pl_module, dataloader, self.n_samples, self.autoregressive_steps
+                pl_module, dataloader, self.n_samples, self.autoregressive_steps, self.top_k, self.temperature
             )
 
             generated = [
