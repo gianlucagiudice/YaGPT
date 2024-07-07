@@ -98,7 +98,8 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
         mask = torch.tril(mask)
         self.register_buffer('causal_mask', mask)
 
-        self.dropout = torch.nn.Dropout(dropout)
+        self.attention_dropout = torch.nn.Dropout(dropout)
+        self.linear_dropout = torch.nn.Dropout(dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Compute QKV
@@ -125,12 +126,13 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
         attention = attention.masked_fill(attention_mask == 0, float('-inf'))
 
         attention = torch.nn.functional.softmax(attention, dim=-1)
+        attention = self.attention_dropout(attention)
         attention = attention @ v
 
         # Concatenate heads
         res = attention.transpose(1, 2).reshape(x.shape[0], x.shape[1], -1)
         res = self.linear(res)
-        res = self.dropout(res)
+        res = self.linear_dropout(res)
 
         return res
 
