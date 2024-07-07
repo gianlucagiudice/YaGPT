@@ -68,11 +68,13 @@ class FeedForwardLayer(torch.nn.Module):
         self.linear_1 = torch.nn.Linear(d_model, d_ff)
         self.dropout = torch.nn.Dropout(dropout)
         self.linear_2 = torch.nn.Linear(d_ff, d_model)
+        self.activation = torch.nn.GELU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.linear_1(x)
-        x = self.dropout(x)
+        x = self.activation(x)
         x = self.linear_2(x)
+        x = self.dropout(x)
         return x
 
 
