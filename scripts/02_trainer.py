@@ -64,7 +64,12 @@ def train(
         vocab_size=train_dataset.vocab_size
     )
 
-    model = YaGPTWrapper(model_config, lr=lr, scheduler_t0=scheduler_t0, scheduler_t_mult=scheduler_t_mult)
+    model = YaGPTWrapper(
+        model_config,
+        lr=lr,
+        scheduler_t0=scheduler_t0,
+        scheduler_t_mult=scheduler_t_mult,
+    )
 
     # Train model
     trainer = lightning.Trainer(
