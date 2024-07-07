@@ -118,7 +118,7 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
 
         # Compute attention
         attention = q @ k.transpose(2, 3)
-        attention = attention / (self.d_head ** 0.5)
+        attention = attention * (1 / torch.sqrt(torch.tensor(self.d_head)))
 
         # Apply the causal mask by setting future values to -inf
         attention_mask = self.causal_mask.unsqueeze(0).unsqueeze(0).expand(x.shape[0], self.n_heads, -1, -1)
