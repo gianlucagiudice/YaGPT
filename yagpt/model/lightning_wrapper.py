@@ -42,6 +42,10 @@ class YaGPTWrapper(lightning.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-            optimizer, T_0=self.scheduler_t0, T_mult=self.scheduler_t_mult)
-        return [optimizer], [{'scheduler': scheduler, 'interval': 'step'}]
+        # TODO: Fix scheduler
+        # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        #     optimizer,
+        #     T_0=self.scheduler_t0,
+        #     T_mult=self.scheduler_t_mult
+        # )
+        return optimizer
