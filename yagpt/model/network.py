@@ -207,6 +207,7 @@ class YaGPT(torch.nn.Module):
 
         return logits
 
+    @torch.no_grad()
     def generate_text(
             self,
             x: torch.Tensor,
@@ -232,9 +233,9 @@ class YaGPT(torch.nn.Module):
             last_pos = min(self.config.seq_len, x.shape[1])
 
             pred_head = logits[0, last_pos - 1, :] / temperature
-            pred_head = torch.nn.functional.log_softmax(pred_head, dim=-1)
+            pred_head = torch.nn.functional.softmax(pred_head, dim=-1)
             top_k_pred = torch.topk(pred_head, top_k, dim=-1)
-            next_token_pred = torch.multinomial(torch.exp(top_k_pred.values), 1)
+            next_token_pred = torch.multinomial(top_k_pred.values, 1)
             next_token_pred = next_token_pred.to(x.device)
 
             x = torch.cat([x[0, :last_pos], next_token_pred]).unsqueeze(dim=0)
