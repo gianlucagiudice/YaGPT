@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import fire
 import lightning
@@ -13,18 +13,19 @@ from yagpt.model import YaGPTWrapper, YaGPTConfig
 
 def train(
         # Dataset
-        dataset_path: str,
+        dataset_dir_path: str,
         # Model parameters
-        batch_size: int = 128,
+        batch_size: int = 64,
         d_model: int = 264,
         seq_len: int = 160,
         n_heads: int = 6,
         n_layers: int = 6,
         dff_factor: int = 4,
-        dropout: float = 0.3,
+        dropout: float = 0.1,
         # Training parameters
         max_epochs: int = 10,
         max_steps: int = -1,
+        overfit_batches: Union[int, float] = 0.0,
         accelerator: str = 'auto',
         val_check_interval: Optional[int] = None,
         limit_val_batches: Optional[int] = None,
@@ -42,13 +43,13 @@ def train(
         temperature: float = 1.25,
 ):
     # Load datasets
-    train_dataset = YaDataset(dataset_path, 'train', seq_len)
+    train_dataset = YaDataset(dataset_dir_path, 'train', seq_len)
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size,
         shuffle=True, num_workers=8, persistent_workers=True
     )
 
-    val_dataset = YaDataset(dataset_path, 'val', seq_len)
+    val_dataset = YaDataset(dataset_dir_path, 'val', seq_len)
     val_loader = DataLoader(
         val_dataset, batch_size=batch_size,
         shuffle=False, num_workers=8, persistent_workers=True
@@ -79,6 +80,7 @@ def train(
         logger=lightning.pytorch.loggers.WandbLogger(project="YaGPT", log_model='all'),
         val_check_interval=val_check_interval,
         limit_val_batches=limit_val_batches,
+        overfit_batches=overfit_batches,
         callbacks=[
             ModelCheckpoint(dirpath='checkpoints', monitor='val_loss', mode='min'),
             EarlyStopping(monitor='val_loss', patience=early_stopping_patience, mode='min'),
