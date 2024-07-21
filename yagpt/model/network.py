@@ -89,9 +89,7 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
         self.n_heads = n_heads
         self.d_head = d_model // n_heads
 
-        self.q_transform = torch.nn.Linear(d_model, d_model, bias=False)
-        self.k_transform = torch.nn.Linear(d_model, d_model, bias=False)
-        self.v_transform = torch.nn.Linear(d_model, d_model, bias=False)
+        self.qkv = torch.nn.Linear(d_model, 3 * d_model)
 
         self.linear = torch.nn.Linear(d_model, d_model)
 
@@ -105,9 +103,9 @@ class CausalMultiHeadAttentionLayer(torch.nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Compute QKV
-        q = self.q_transform(x)  # (B, N, D)
-        k = self.k_transform(x)  # (B, N, D)
-        v = self.v_transform(x)  # (B, N, D)
+        qkv = self.qkv(x)
+        # Get Q, K, V matrices (B, N, D * 3) -> (B, N, D) x 3
+        q, k, v = torch.chunk(qkv, 3, dim=-1)
 
         # Split matrices into multiple heads (B, N, D) -> (B, N, HEADS, D_HEAD)
         q = q.view(x.shape[0], self.seq_len, self.n_heads, self.d_head)
