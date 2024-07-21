@@ -26,8 +26,9 @@ class YaGPTWrapper(lightning.LightningModule):
     def shared_step(self, batch):
         x, y = batch
         logits = self(x)
-        logits = logits.transpose(1, 2)
-        loss = torch.nn.functional.cross_entropy(logits, y)
+        y_pred = logits.view(-1, logits.size(-1))
+        y_target = y.view(-1)
+        loss = torch.nn.functional.cross_entropy(y_pred, y_target)
         return loss
 
     def training_step(self, batch, batch_idx):
