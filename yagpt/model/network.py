@@ -234,7 +234,8 @@ class YaGPT(torch.nn.Module):
             pred_head = torch.nn.functional.softmax(pred_head, dim=-1)
             top_k_pred = torch.topk(pred_head, top_k, dim=-1)
             next_token_pred = torch.multinomial(top_k_pred.values, 1)
-            next_token_pred = next_token_pred.to(x.device)
+            # TODO: Check if this is correct
+            next_token_pred = top_k_pred.indices.gather(-1, next_token_pred).to(x.device)
 
             x = torch.cat((x[:, 1:], next_token_pred.unsqueeze(dim=0)), dim=1)
 
