@@ -1,4 +1,5 @@
 import os
+from abc import ABC, abstractmethod
 from typing import Literal, Tuple, List
 
 import tiktoken
@@ -6,8 +7,44 @@ import torch
 from torch.utils.data import Dataset
 
 
+class Tokenizer(ABC):
+    @classmethod
+    @abstractmethod
+    def encode(cls, text):
+        pass
+
+    @classmethod
+    @abstractmethod
+    def decode(cls, tokens):
+        pass
+
+
+class CustomTokenizer(Tokenizer):
+
+    @classmethod
+    def encode(cls, text):
+        return list(map(ord, text))
+
+    @classmethod
+    def decode(cls, tokens):
+        return ''.join(map(chr, tokens))
+
+
+class GPT2Tokenizer:
+
+    _tokenizer = tiktoken.get_encoding('gpt2')
+
+    @classmethod
+    def encode(cls, text):
+        return cls._tokenizer.encode(text)
+
+    @classmethod
+    def decode(cls, tokens):
+        return cls._tokenizer.decode(tokens)
+
+
 class YaDataset(Dataset):
-    tokenizer = tiktoken.get_encoding('gpt2')
+    tokenizer = CustomTokenizer()
 
     def __init__(
             self,
@@ -63,7 +100,7 @@ class YaDataset(Dataset):
 
 if __name__ == '__main__':
     from pathlib import Path
-    dataset_path = Path(__file__).parent.parent.parent / 'dataset' / 'divina_commedia'
+    dataset_path = Path(__file__).parent.parent.parent / 'dataset' / 'divina_commedia' / 'toy_inferno'
     dataset_path = str(dataset_path)
 
     dataset = YaDataset(dataset_path, 'train', 128)
