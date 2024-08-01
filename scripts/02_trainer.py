@@ -16,10 +16,10 @@ def train(
         dataset_dir_path: str,
         # Model parameters
         batch_size: int = 64,
-        d_model: int = 264,
-        seq_len: int = 160,
-        n_heads: int = 6,
-        n_layers: int = 6,
+        d_model: int = 448,
+        seq_len: int = 128,
+        n_heads: int = 8,
+        n_layers: int = 8,
         dff_factor: int = 4,
         dropout: float = 0.1,
         # Training parameters
@@ -30,10 +30,9 @@ def train(
         val_check_interval: Optional[int] = None,
         limit_val_batches: Optional[int] = None,
         log_every_n_steps: int = 5,
-        gradient_clip_val: float = 1.0,
         early_stopping_patience: int = 3,
         # Optimizer parameters
-        lr: float = 1e-2,
+        lr: float = 1e-3,
         scheduler_t0: int = 150,
         scheduler_t_mult: int = 1,
         # Generation parameters
@@ -91,7 +90,6 @@ def train(
             ),
         ],
         accelerator=accelerator,
-        gradient_clip_val=gradient_clip_val,
         detect_anomaly=True
     )
     trainer.fit(model, train_loader, val_loader)
