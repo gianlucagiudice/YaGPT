@@ -22,7 +22,7 @@ def read_dataset(dataset_path: str, lower_case: bool, shuffle_sections: bool) ->
     return text
 
 
-def split_dataset(tokens, train_ratio=0.9):
+def split_dataset(tokens, train_ratio):
     split_idx = round(len(tokens) * train_ratio)
     train_tokens, val_tokens = tokens[:split_idx], tokens[split_idx:]
     return train_tokens, val_tokens
@@ -37,11 +37,14 @@ def remap_tokens(tokens):
 
 
 def main(
-        dataset_path: Optional[str] = None,
-        output_dir: str = os.path.dirname(__file__)
+        dataset_path: str,
+        output_dir: str = None,
+        train_ratio: float = 0.9
 ):
     if dataset_path is None:
-        dataset_path = os.path.join(os.path.dirname(__file__), 'inferno.txt')
+        raise ValueError('dataset_path must be provided')
+    if output_dir is None:
+        output_dir = os.path.dirname(dataset_path)
 
     # Read dataset
     raw_text = read_dataset(dataset_path, lower_case=False, shuffle_sections=True)
@@ -51,7 +54,7 @@ def main(
     id_to_token, token_to_id = remap_tokens(tokens)
     tokens = [token_to_id[t] for t in tokens]
     # Split dataset
-    train_tokens, val_tokens = split_dataset(tokens)
+    train_tokens, val_tokens = split_dataset(tokens, train_ratio=train_ratio)
     # Save dataset
     os.makedirs(output_dir, exist_ok=True)
 
