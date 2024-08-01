@@ -44,7 +44,7 @@ class GPT2Tokenizer:
 
 
 class YaDataset(Dataset):
-    tokenizer = CustomTokenizer()
+    tokenizer = GPT2Tokenizer()
 
     def __init__(
             self,
