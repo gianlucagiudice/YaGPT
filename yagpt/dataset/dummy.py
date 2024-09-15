@@ -1,7 +1,7 @@
 from typing import Tuple, List
 
-from torch.utils.data import Dataset
 import torch
+from torch.utils.data import Dataset
 
 
 def collate_fn(batch: List[Tuple[list[int], list[int]]]) -> Tuple[torch.Tensor, torch.Tensor]:
