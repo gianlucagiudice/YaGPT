@@ -16,10 +16,10 @@ def train(
         dataset_dir_path: str,
         # Model parameters
         batch_size: int = 64,
-        d_model: int = 448,
-        seq_len: int = 128,
-        n_heads: int = 8,
-        n_layers: int = 8,
+        d_model: int = 336,
+        seq_len: int = 512,
+        n_heads: int = 6,
+        n_layers: int = 6,
         dff_factor: int = 4,
         dropout: float = 0.1,
         # Training parameters
@@ -31,10 +31,13 @@ def train(
         limit_val_batches: Optional[int] = None,
         log_every_n_steps: int = 5,
         early_stopping_patience: int = 3,
+        min_delta: float = 0.01,
+        metric_to_monitor: str = 'train_loss',
         # Optimizer parameters
         lr: float = 1e-3,
         scheduler_t0: int = 150,
         scheduler_t_mult: int = 1,
+        gradient_clip_val: float = 0.5,
         # Generation parameters
         n_samples: int = 4,
         autoregressive_steps: int = 32,
@@ -80,9 +83,10 @@ def train(
         val_check_interval=val_check_interval,
         limit_val_batches=limit_val_batches,
         overfit_batches=overfit_batches,
+        gradient_clip_val=gradient_clip_val,
         callbacks=[
-            ModelCheckpoint(dirpath='checkpoints', monitor='val_loss', mode='min'),
-            EarlyStopping(monitor='val_loss', patience=early_stopping_patience, mode='min'),
+            ModelCheckpoint(dirpath='checkpoints', monitor=metric_to_monitor, mode='min'),
+            EarlyStopping(monitor=metric_to_monitor, patience=early_stopping_patience, mode='min', min_delta=min_delta),
             LearningRateMonitor(logging_interval='step'),
             TrainingGenerationCallback(
                 n_samples=n_samples, autoregressive_steps=autoregressive_steps,
