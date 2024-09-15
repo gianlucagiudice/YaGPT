@@ -1,57 +1,22 @@
 import os
-from abc import ABC, abstractmethod
 from typing import Literal, Tuple, List
 
-import tiktoken
 import torch
 from torch.utils.data import Dataset
 
-
-class Tokenizer(ABC):
-    @classmethod
-    @abstractmethod
-    def encode(cls, text):
-        pass
-
-    @classmethod
-    @abstractmethod
-    def decode(cls, tokens):
-        pass
-
-
-class CustomTokenizer(Tokenizer):
-
-    @classmethod
-    def encode(cls, text):
-        return list(map(ord, text))
-
-    @classmethod
-    def decode(cls, tokens):
-        return ''.join(map(chr, tokens))
-
-
-class GPT2Tokenizer:
-
-    _tokenizer = tiktoken.get_encoding('gpt2')
-
-    @classmethod
-    def encode(cls, text):
-        return cls._tokenizer.encode(text)
-
-    @classmethod
-    def decode(cls, tokens):
-        return cls._tokenizer.decode(tokens)
+from yagpt.tokenizer import AbstractTokenizer, tokenizer_factory
 
 
 class YaDataset(Dataset):
-    tokenizer = GPT2Tokenizer()
 
     def __init__(
             self,
             data_dir: str,
             split: Literal['train', 'val'],
             seq_len: int,
+            tokenizer_name: Literal['gpt2', 'char'] = 'char'
     ):
+        self.tokenizer: AbstractTokenizer = tokenizer_factory(tokenizer_name)
         self.tokens, self.id_to_token, self.token_to_id = self._read_split(data_dir, split)
         self.vocab_size = len(self.id_to_token)
         self.seq_len = seq_len
@@ -69,23 +34,13 @@ class YaDataset(Dataset):
         tokens, id_to_token, token_to_id = data['tokens'], data['id_to_token'], data['token_to_id']
         return tokens, id_to_token, token_to_id
 
-    def tokenize(self, text: str):
-        return self.tokenize_helper(text, self.token_to_id)
+    def tokenize(self, text: str) -> List[int]:
+        encoded = self.tokenizer.encode(text)
+        return encoded
 
     def untokenize(self, tokens: List[int]) -> str:
-        return self.untokenize_helper(tokens, self.id_to_token)
-
-    @classmethod
-    def tokenize_helper(cls, text: str, token_to_id: dict[int, int]) -> list[int]:
-        tokens = cls.tokenizer.encode(text)
-        tokens = [token_to_id[t] for t in tokens]
-        return tokens
-
-    @classmethod
-    def untokenize_helper(cls, tokens: list[int], id_to_token: dict[int, int]) -> str:
-        tokens = [id_to_token[t] for t in tokens]
-        text = cls.tokenizer.decode(tokens)
-        return text
+        decoded = self.tokenizer.decode(tokens)
+        return decoded
 
     def __len__(self):
         return len(self.tokens) - self.seq_len - 1
@@ -100,7 +55,7 @@ class YaDataset(Dataset):
 
 if __name__ == '__main__':
     from pathlib import Path
-    dataset_path = Path(__file__).parent.parent.parent / 'dataset' / 'divina_commedia' / 'toy_inferno'
+    dataset_path = Path(__file__).parent.parent.parent / 'dataset' / 'divina_commedia' / 'processed'
     dataset_path = str(dataset_path)
 
     dataset = YaDataset(dataset_path, 'train', 128)
@@ -119,5 +74,4 @@ if __name__ == '__main__':
           f"\tY:\t{yy} ...\n"
           f"Untokenized sample:\n"
           f"\tX:\n```text\n\t{dataset.untokenize(xx)}\n```\n"
-          f"\tY:\n```text\n\t{dataset.untokenize(yy)}\n```\n"
-          )
+          f"\tY:\n```text\n\t{dataset.untokenize(yy)}\n```\n")
