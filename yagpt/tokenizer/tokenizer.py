@@ -19,3 +19,8 @@ class AbstractTokenizer(ABC):
     @abstractmethod
     def load(self, model_file: str):
         pass
+
+    @property
+    @abstractmethod
+    def vocab_size(self) -> int:
+        pass
