@@ -6,8 +6,8 @@ import wandb
 from lightning.pytorch.callbacks import Callback
 from torch.utils.data import DataLoader
 
-from yagpt.dataset import YaDataset
 from yagpt.model import YaGPTWrapper
+from yagpt.tokenizer import AbstractTokenizer
 
 
 class TableColumns(enum.Enum):
@@ -31,7 +31,7 @@ class TableColumns(enum.Enum):
 class TrainingGenerationCallback(Callback):
     def __init__(
             self,
-            id_to_token: dict[int, int],
+            tokenizer: AbstractTokenizer,
             n_samples: int = 4,
             autoregressive_steps: int = 16,
             top_k: int = 5,
@@ -42,7 +42,7 @@ class TrainingGenerationCallback(Callback):
         self.temperature = temperature
         self.autoregressive_steps = autoregressive_steps
         self.table = wandb.Table(columns=TableColumns.get_values())
-        self.id_to_token = id_to_token
+        self.tokenizer = tokenizer
 
     @staticmethod
     def autoregressive_generation(
@@ -52,7 +52,7 @@ class TrainingGenerationCallback(Callback):
             autoregressive_steps: int,
             top_k: int,
             temperature: float,
-            id_to_token: dict[int, int]
+            tokenizer: AbstractTokenizer
     ) -> List[Dict]:
         # Shuffle the validation set
         random_val_dataloader = DataLoader(data_loader.dataset, batch_size=1, shuffle=True)
@@ -68,8 +68,8 @@ class TrainingGenerationCallback(Callback):
                 x_sample, autoregressive_steps, top_k=top_k, temperature=temperature)
 
             # Decode the generated tokens
-            context_text = YaDataset.untokenize_helper(x_sample.flatten().tolist(), id_to_token)
-            generated_text = YaDataset.untokenize_helper(list(tokens_iterator), id_to_token)
+            context_text = tokenizer.decode(x_sample.squeeze(dim=0).tolist())
+            generated_text = tokenizer.decode(tokens_iterator)
 
             data.append({
                 'context': context_text,
@@ -91,7 +91,7 @@ class TrainingGenerationCallback(Callback):
 
             autoregressive_generation = self.autoregressive_generation(
                 pl_module, dataloader, self.n_samples, self.autoregressive_steps,
-                self.top_k, self.temperature, self.id_to_token
+                self.top_k, self.temperature, self.tokenizer
             )
 
             generated = [
