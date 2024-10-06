@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 import fire
 import lightning
@@ -9,11 +9,45 @@ from torch.utils.data import DataLoader
 from yagpt.callback import TrainingGenerationCallback
 from yagpt.dataset import YaDataset
 from yagpt.model import YaGPTWrapper, YaGPTConfig
+from yagpt.tokenizer import AbstractTokenizer, tokenizer_factory
+
+
+def init_dataset(dataset_dir_path: str, batch_size: int, seq_len: int) -> Tuple[DataLoader, DataLoader]:
+    train_dataset = YaDataset(dataset_dir_path, 'train', seq_len)
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size,
+        shuffle=True, num_workers=8, persistent_workers=True
+    )
+
+    val_dataset = YaDataset(dataset_dir_path, 'val', seq_len)
+    val_loader = DataLoader(
+        val_dataset, batch_size=batch_size,
+        shuffle=False, num_workers=8, persistent_workers=True
+    )
+    return train_loader, val_loader
+
+
+def init_tokenizer(tokenizer_name: str, tokenizer_path: Optional[str], dataset_dir_path: str) -> AbstractTokenizer:
+    if tokenizer_path is None:
+        import os
+        for file in os.listdir(dataset_dir_path):
+            if file.endswith(".model"):
+                tokenizer_path = os.path.join(dataset_dir_path, file)
+                break
+
+        if tokenizer_path is None:
+            raise FileNotFoundError("No file with extension '.model' found in the dataset directory.")
+
+    tokenizer = tokenizer_factory(tokenizer_name)
+    tokenizer.load(tokenizer_path)
+    return tokenizer
 
 
 def train(
         # Dataset
         dataset_dir_path: str,
+        tokenizer_name: str = 'bpe',
+        tokenizer_path: Optional[str] = None,
         # Model parameters
         batch_size: int = 64,
         d_model: int = 336,
@@ -45,18 +79,12 @@ def train(
         temperature: float = 1.25,
 ):
     # Load datasets
-    train_dataset = YaDataset(dataset_dir_path, 'train', seq_len)
-    train_loader = DataLoader(
-        train_dataset, batch_size=batch_size,
-        shuffle=True, num_workers=8, persistent_workers=True
-    )
+    train_loader, val_loader = init_dataset(dataset_dir_path, batch_size, seq_len)
 
-    val_dataset = YaDataset(dataset_dir_path, 'val', seq_len)
-    val_loader = DataLoader(
-        val_dataset, batch_size=batch_size,
-        shuffle=False, num_workers=8, persistent_workers=True
-    )
+    # Load tokenizer
+    tokenizer = init_tokenizer(tokenizer_name, tokenizer_path, dataset_dir_path)
 
+    # Initialize model
     model_config = YaGPTConfig(
         seq_len=seq_len,
         d_model=d_model,
@@ -64,7 +92,7 @@ def train(
         n_heads=n_heads,
         n_layers=n_layers,
         dropout=dropout,
-        vocab_size=train_dataset.vocab_size
+        vocab_size=tokenizer.vocab_size
     )
 
     model = YaGPTWrapper(
@@ -90,7 +118,7 @@ def train(
             LearningRateMonitor(logging_interval='step'),
             TrainingGenerationCallback(
                 n_samples=n_samples, autoregressive_steps=autoregressive_steps,
-                top_k=generation_top_k, temperature=temperature, id_to_token=train_dataset.id_to_token
+                top_k=generation_top_k, temperature=temperature, tokenizer=tokenizer
             ),
         ],
         accelerator=accelerator,
