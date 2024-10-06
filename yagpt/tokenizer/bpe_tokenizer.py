@@ -39,3 +39,11 @@ class BPETokenizer(AbstractTokenizer):
     def load(self, model_file: str):
         self.tokenizer = BasicTokenizer()
         self.tokenizer.load(model_file)
+
+    @property
+    def vocab_size(self) -> int:
+        if self.tokenizer is None:
+            raise ValueError("Tokenizer is not initialized")
+
+        vocab_size = len(self.tokenizer.vocab)
+        return vocab_size
