@@ -51,7 +51,7 @@ def train(
         # Model parameters
         batch_size: int = 64,
         d_model: int = 336,
-        seq_len: int = 512,
+        seq_len: int = 160,
         n_heads: int = 6,
         n_layers: int = 6,
         dff_factor: int = 4,
