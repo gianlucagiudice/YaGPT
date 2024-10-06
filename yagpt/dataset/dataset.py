@@ -1,10 +1,8 @@
 import os
-from typing import Literal, Tuple, List
+from typing import Literal, Tuple
 
 import torch
 from torch.utils.data import Dataset
-
-from yagpt.tokenizer import AbstractTokenizer, tokenizer_factory
 
 
 class YaDataset(Dataset):
@@ -14,11 +12,8 @@ class YaDataset(Dataset):
             data_dir: str,
             split: Literal['train', 'val'],
             seq_len: int,
-            tokenizer_name: Literal['gpt2', 'char'] = 'char'
     ):
-        self.tokenizer: AbstractTokenizer = tokenizer_factory(tokenizer_name)
-        self.tokens, self.id_to_token, self.token_to_id = self._read_split(data_dir, split)
-        self.vocab_size = len(self.id_to_token)
+        self.tokens = self._read_split(data_dir, split)
         self.seq_len = seq_len
 
     @staticmethod
@@ -30,17 +25,8 @@ class YaDataset(Dataset):
                 file_path = os.path.join(data_dir, 'val.bin')
             case _:
                 raise ValueError(f'split must be either "train" or "val", got {split}')
-        data = torch.load(file_path)
-        tokens, id_to_token, token_to_id = data['tokens'], data['id_to_token'], data['token_to_id']
-        return tokens, id_to_token, token_to_id
-
-    def tokenize(self, text: str) -> List[int]:
-        encoded = self.tokenizer.encode(text)
-        return encoded
-
-    def untokenize(self, tokens: List[int]) -> str:
-        decoded = self.tokenizer.decode(tokens)
-        return decoded
+        tokens = torch.load(file_path)
+        return tokens
 
     def __len__(self):
         return len(self.tokens) - self.seq_len - 1
@@ -55,6 +41,7 @@ class YaDataset(Dataset):
 
 if __name__ == '__main__':
     from pathlib import Path
+
     dataset_path = Path(__file__).parent.parent.parent / 'dataset' / 'divina_commedia' / 'processed'
     dataset_path = str(dataset_path)
 
@@ -68,10 +55,6 @@ if __name__ == '__main__':
     yy = tokens_sample[1][:n_tokens].tolist()
 
     print(f"Dataset size: {len(dataset)}")
-    print(f"Vocab size: {dataset.vocab_size}")
     print(f"\nTokens sample ({len(tokens_sample[0])}):\n"
           f"\tX:\t{xx} ...\n"
-          f"\tY:\t{yy} ...\n"
-          f"Untokenized sample:\n"
-          f"\tX:\n```text\n\t{dataset.untokenize(xx)}\n```\n"
-          f"\tY:\n```text\n\t{dataset.untokenize(yy)}\n```\n")
+          f"\tY:\t{yy} ...\n")
