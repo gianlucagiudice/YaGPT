@@ -1,4 +1,4 @@
-from . import GPT2Tokenizer, CharTokenizer, AbstractTokenizer
+from . import *
 
 
 def tokenizer_factory(tokenizer_name: str) -> AbstractTokenizer:
@@ -7,5 +7,7 @@ def tokenizer_factory(tokenizer_name: str) -> AbstractTokenizer:
             return GPT2Tokenizer()
         case 'char':
             return CharTokenizer()
+        case 'bpe':
+            return BPETokenizer()
         case _:
             raise ValueError(f'Unknown tokenizer {tokenizer_name}')
