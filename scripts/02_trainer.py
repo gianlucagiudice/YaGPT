@@ -38,8 +38,7 @@ def init_tokenizer(tokenizer_name: str, tokenizer_path: Optional[str], dataset_d
         if tokenizer_path is None:
             raise FileNotFoundError("No file with extension '.model' found in the dataset directory.")
 
-    tokenizer = tokenizer_factory(tokenizer_name)
-    tokenizer.load(tokenizer_path)
+    tokenizer = tokenizer_factory(tokenizer_name, tokenizer_path)
     return tokenizer
 
 
