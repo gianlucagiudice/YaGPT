@@ -1,59 +1,51 @@
-import os
-from pathlib import Path
 from textwrap import dedent
-from typing import Optional
 
 import fire
-from dotenv import load_dotenv
 import torch
 
 from yagpt.model import YaGPTWrapper
-from yagpt.dataset import DivinaCommediaDataset
-
-load_dotenv()
-
-ROOT = Path(__file__).parent.parent
+from yagpt.tokenizer import tokenizer_factory
 
 
 def generate(
-        model_checkpoint_path: Optional[str] = None,
+        model_checkpoint_path: str,
+        tokenizer_path: str,
+        tokenizer_name: str = 'bpe',
         n_steps: int = 100
 ):
     if model_checkpoint_path is None:
-        model_dir = os.getenv('MODEL_WEIGHTS_DIR')
-        if model_dir is None:
-            raise ValueError('Please provide destination_dir or set MODEL_WEIGHTS_DIR in .env file')
-        model_checkpoint_path = str(ROOT / model_dir / 'model.ckpt')
+        raise ValueError('Please provide destination_dir or set MODEL_WEIGHTS_DIR in .env file')
+
+    if tokenizer_path is None:
+        raise ValueError('Please provide tokenizer_path or set TOKENIZER_PATH in .env file')
 
     # Load model using Lightning
     model: YaGPTWrapper = YaGPTWrapper.load_from_checkpoint(model_checkpoint_path)
     model.eval()
 
+    # Load Tokenizer
+    tokenizer = tokenizer_factory(tokenizer_name, tokenizer_path)
+
     text = dedent("""
-    O poca nostra nobiltà di sangue,
-    se gloriar di te la gente fai
-    qua giù dove l’affetto nostro langue,
-    
-    mirabil cosa non mi sarà mai:
-    ché là dove appetito non si torce,
-    dico nel cielo, io me ne gloriai.
-    
-    Ben se’ tu manto che tosto raccorce:
-    sì che, se non s’appon di dì in die,
-    lo tempo va dintorno con le force.
-    
-    Dal ‘voi’ che prima a Roma s’offerie,
-    in che la sua famiglia men persevra,
-    ricominciaron le parole mie;
+    Tanto gentile e tanto onesta pare
+    la donna mia quand'ella altrui saluta,
+    ch'ogne lingua deven tremando muta,
+    e li occhi no l'ardiscon di guardare.
+    Ella si va, sentendosi laudare,
+    benignamente d'umiltà vestuta;
+    e par che sia una cosa venuta
+    da cielo in terra a miracol mostrare.
+    Mostrasi sì piacente a chi la mira,
+    che dà per li occhi una dolcezza al core,
     """)
 
     print(f">>> Context:\n"
           f"{text}\n"
           f">>> Generated text:\n")
-    tokens = DivinaCommediaDataset.tokenizer.encode(text)
+    tokens = tokenizer.encode(text)
     batch = torch.tensor(tokens).unsqueeze(0).long()
-    for token in model.model.generate_text(batch, n_steps):
-        token = DivinaCommediaDataset.tokenizer.decode([token])
+    for token in model.model.generate_text(batch, n_steps, temperature=2, top_k=50):
+        token = tokenizer.decode([token])
         print(token, end='')
 
 
