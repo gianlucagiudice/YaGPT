@@ -217,27 +217,30 @@ class YaGPT(torch.nn.Module):
         assert top_k > 0, ValueError('Top-k should be greater than 0')
         assert top_k <= self.config.vocab_size, ValueError('Top-k should be less than the vocabulary size')
 
-        if x.shape[1] > self.config.seq_len:
-            x = x[:, -self.config.seq_len:]
-        if x.shape[1] < self.config.seq_len:
-            raise ValueError('Input tensor should have shape (1, N)')
-            # padding = torch.zeros(x.shape[0], self.config.seq_len - x.shape[1], dtype=torch.long)
-            # x = torch.cat([x, padding], dim=1)
-
+        x_input = x
         # Generate auto-regressively
         for step in range(n_steps):
+
+            # Truncate the input tensor if it is larger than the sequence length
+            if x_input.shape[1] > self.config.seq_len:
+                x_input = x_input[:, -self.config.seq_len:]
+
+            # Pad the input tensor if it is smaller than the sequence length
+            padding = torch.zeros(1, max(0, self.config.seq_len - x_input.shape[1]), dtype=torch.long)
+            x_padded = torch.cat([x_input, padding], dim=1)
+
             # Forward pass
-            logits = self(x)
+            logits = self(x_padded)
 
             # Sample the next token
-            pred_head = logits[0, -1, :] / temperature
+            last_token_idx = self.config.seq_len - padding.shape[1] - 1
+            pred_head = logits[0, last_token_idx, :] / temperature
             pred_head = torch.nn.functional.softmax(pred_head, dim=-1)
             top_k_pred = torch.topk(pred_head, top_k, dim=-1)
             next_token_pred = torch.multinomial(top_k_pred.values, 1)
-            # TODO: Check if this is correct
             next_token_pred = top_k_pred.indices.gather(-1, next_token_pred).to(x.device)
 
-            x = torch.cat((x[:, 1:], next_token_pred.unsqueeze(dim=0)), dim=1)
+            x_input = torch.cat((x_input, next_token_pred.unsqueeze(dim=0)), dim=1)
 
             next_token = next_token_pred.item()
             yield next_token
