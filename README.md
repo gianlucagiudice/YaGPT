@@ -64,23 +64,36 @@ To train YaGPT on your dataset, follow these steps:
 3. Run the training script:
    ```bash
    python scripts/03_trainer.py \
-   --dataset_path [PREPROCESSED_DATASET_PATH] \
-   --tokenizer_path [TOKENIZER_PATH] \
-   --batch_size [BATCH_SIZE] \
-   --d_model [D_MODEL] \
-   --seq_len [SEQ_LEN] \
-   --n_heads [N_HEADS] \
-   --n_layers [N_LAYERS] \
-   --dff_factor [DFF_FACTOR] \
-   --dropout [DROPOUT] \
-   --max_epochs [MAX_EPOCHS] \
-   --lr [LEARNING_RATE]
+     --dataset_path [PREPROCESSED_DATASET_PATH] \
+     --tokenizer_path [TOKENIZER_PATH] \
+     --batch_size [BATCH_SIZE] \
+     --d_model [D_MODEL] \
+     --seq_len [SEQ_LEN] \
+     --n_heads [N_HEADS] \
+     --n_layers [N_LAYERS] \
+     --dff_factor [DFF_FACTOR] \
+     --dropout [DROPOUT] \
+     --max_epochs [MAX_EPOCHS] \
+     --lr [LEARNING_RATE]
    ```
 ---
 
 ## 📊 Results
 
-### Performance and Generated Output
+### Generated Output
+To generate text using YaGPT, you can use the script `scripts/04_generate.py` as follows:
+
+```bash
+python scripts/04_generate.py \
+  --model_checkpoint_path [MODEL_CHECKPOINT_PATH] \
+  --tokenizer_path [TOKENIZER_PATH] \
+  --n_steps [N_STEPS] \
+  --temperature [TEMPERATURE] \
+  --top_k [TOP_K]
+```
+
+This script allows you to generate text based on a given prompt, leveraging the trained YaGPT model to produce sequences that mimic Dante's style.
+
 
 The model's output was evaluated qualitatively for coherence, fluency, and adherence to Dante's style. Below is an example:
 
