@@ -1,12 +1,11 @@
 import fire
 
-from yagpt import YaGPTWrapper, tokenizer_factory
+from yagpt import YaGPTWrapper, BPETokenizer
 
 
 def generate(
         model_checkpoint_path: str,
         tokenizer_path: str,
-        tokenizer_name: str = 'bpe',
         n_steps: int = 200,
         temperature: float = 1.5,
         top_k: int = 5
@@ -21,7 +20,7 @@ def generate(
     model: YaGPTWrapper = YaGPTWrapper.load_from_checkpoint(model_checkpoint_path)
 
     # Load Tokenizer
-    tokenizer = tokenizer_factory(tokenizer_name, tokenizer_path)
+    tokenizer: BPETokenizer = BPETokenizer.load_from_checkpoint(tokenizer_path)
 
     text = ("Inferno\n"
             "Canto XXXIV\n\n"
