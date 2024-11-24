@@ -63,9 +63,19 @@ To train YaGPT on your dataset, follow these steps:
    ```
 3. Run the training script:
    ```bash
-   python scripts/03_trainer.py --dataset_path [PREPROCESSED_DATASET_PATH] --tokenizer_path [TOKENIZER_PATH] --batch_size [BATCH_SIZE] --d_model [D_MODEL] --seq_len [SEQ_LEN] --n_heads [N_HEADS] --n_layers [N_LAYERS] --dropout [DROPOUT] --max_epochs [MAX_EPOCHS] --lr [LEARNING_RATE]
+   python scripts/03_trainer.py \
+   --dataset_path [PREPROCESSED_DATASET_PATH] \
+   --tokenizer_path [TOKENIZER_PATH] \
+   --batch_size [BATCH_SIZE] \
+   --d_model [D_MODEL] \
+   --seq_len [SEQ_LEN] \
+   --n_heads [N_HEADS] \
+   --n_layers [N_LAYERS] \
+   --dff_factor [DFF_FACTOR] \
+   --dropout [DROPOUT] \
+   --max_epochs [MAX_EPOCHS] \
+   --lr [LEARNING_RATE]
    ```
-
 ---
 
 ## 📊 Results
