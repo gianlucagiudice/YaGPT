@@ -1,75 +1,73 @@
-# YaGPT: GPT Implementation from Scratch Using PyTorch
+# YaGPT: A Decoder-Only Transformer from Scratch in PyTorch
 
 ![YaGPT Text Generation](assets/generation_sample.png)  <!-- Placeholder for an image showing the model generating text -->
 
-This repository presents YaGPT (Yet Another GPT), a GPT (Generative Pre-trained Transformer) model implemented entirely from scratch using only PyTorch. The model is trained exclusively on the Divina Commedia, aiming to generate text in the style of Dante Alighieri’s masterpiece. Note that only the pre-training phase has been completed, and no fine-tuning has been performed.
+**YaGPT** is an implementation of a **decoder-only transformer** architecture, built entirely from scratch using PyTorch. The project serves as an educational example, designed to help understand the fundamental components of an autoregressive transformer model.
+
+To demonstrate its capabilities, YaGPT was trained exclusively on **Dante Alighieri's *Divina Commedia*** for just 3 hours on a standard laptop. The model is small, with only **8.8 million parameters**, making it suitable for limited computational resources.
+
+---
 
 ## 🌐 Introduction to Transformer Architecture
 
-Introduced by Vaswani et al. in the paper ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762), the transformer architecture revolutionized the field of natural language processing with its self-attention mechanism. Unlike traditional RNNs, transformers can process data sequences in parallel, making them highly efficient for modern hardware.
+Transformers, introduced by Vaswani et al. in ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762), revolutionized natural language processing with their **self-attention mechanism**. Unlike RNNs, transformers process sequences in parallel, enabling greater efficiency on modern hardware.
 
-## 🔍 GPT and the Transformer Decoder
+A **decoder-only transformer**, like the one implemented here, focuses solely on generating sequences token by token, conditioned on the previously generated tokens.
 
-GPT (Generative Pre-trained Transformer) is an autoregressive language model that uses the decoder part of the transformer architecture to generate coherent and contextually relevant text. The transformer architecture consists of two main components:
-
-1. **Encoder**: Processes the input sequence and generates a context-aware representation.
-2. **Decoder**: Uses the encoder's output to generate the target sequence one token at a time.
-
-In a GPT model, only the decoder component is used. This allows the model to generate text by predicting the next token in a sequence based on the previously generated tokens.
-
+---
 ## 🏗️ Model Architecture
 
-YaGPT follows the standard transformer decoder architecture with the following key components:
+YaGPT follows a simplified yet faithful implementation of the decoder architecture with the following components:
 
-1. **Tokenization**: Text is tokenized into individual words or subwords.
-2. **Embedding Layer**: Tokens are converted into dense vector representations.
-3. **Positional Encodings**: Encodings are added to embeddings to retain positional information.
-4. **Transformer Decoder Blocks**: A series of transformer layers with self-attention mechanisms and feed-forward networks.
-5. **Output Layer**: Generates probabilities for the next token in the sequence.
+1. **Tokenization**: Text is split into tokens (words or subwords).
+2. **Embedding Layer**: Tokens are transformed into dense vector representations.
+3. **Positional Encodings**: Positional information is added to embeddings.
+4. **Transformer Decoder Blocks**: A series of layers comprising self-attention and feed-forward networks.
+5. **Output Layer**: Predicts probabilities for the next token in the sequence.
 
-## 🔧 Model Hyperparameters
+### Model Hyperparameters
 
-Understanding the hyperparameters used in YaGPT is crucial for reproducing and fine-tuning the model:
-
-- **seq_len**: Maximum sequence length for the input text.
-- **d_model**: Dimensionality of the token embeddings.
+- **seq_len**: Maximum input sequence length.
+- **d_model**: Dimensionality of token embeddings.
 - **n_heads**: Number of attention heads in each transformer layer.
-- **n_layers**: Number of transformer layers in the decoder.
-- **d_ff**: Dimensionality of the feed-forward network within the transformer.
+- **n_layers**: Number of decoder layers.
+- **d_ff**: Dimensionality of the feed-forward network.
 - **dropout**: Dropout rate for regularization.
-- **vocab_size**: Size of the vocabulary derived from the training dataset.
+- **vocab_size**: Vocabulary size derived from the training dataset.
 
-## ✍ YaGPT: Generating the Divina Commedia
+With only **8.8 million parameters**, YaGPT is intentionally compact and accessible for experimentation on limited hardware.
 
-YaGPT has been trained from scratch on the Divina Commedia to capture the unique style, language, and structure of this literary work. Below is a breakdown of the implementation and training process.
+---
 
-### 🛠️ Training and Hyperparameters
+## ✍ Training on the Divina Commedia
 
-To train YaGPT, follow these steps:
+YaGPT was trained from scratch on Dante’s *Divina Commedia* for **3 hours on a laptop**, with the goal of capturing its unique style, language, and structure. While the training duration was short, the results are a proof of concept for the decoder-only transformer architecture.
 
-1. Navigate to the repository's root directory.
-2. Execute the training script:
+### How to Train
 
-   ```
+To train YaGPT on your dataset, follow these steps:
+
+1. Clone this repository and navigate to the root directory.
+2. Run the training script:
+
+   ```bash
    python scripts/train.py --dataset_path [DATASET_PATH] --batch_size [BATCH_SIZE] --d_model [D_MODEL] --seq_len [SEQ_LEN] --n_heads [N_HEADS] --n_layers [N_LAYERS] --dropout [DROPOUT] --max_epochs [MAX_EPOCHS] --lr [LEARNING_RATE]
    ```
 
-## 📊 Performance and Results
+---
 
-### Overview
+## 📊 Results
 
-YaGPT has been evaluated based on its ability to generate text that mimics the style and content of the Divina Commedia. The generated text is assessed qualitatively for coherence, fluency, and adherence to the original text’s style.
+### Performance and Generated Output
 
-### Example Output
-
-Here is a sample output generated by YaGPT after training on the Divina Commedia:
+The model's output was evaluated qualitatively for coherence, fluency, and adherence to Dante's style. Below is an example:
 
 ```
 >>> Input prompt <<<
 Inferno
 Canto XXXIV
 
-Giunti là dove 
+Giunti là dove
 >>> Generated text <<<
 'l duca mio li s'accostò allato;
 domandollo ond' ei fosse, e quei rispuose:
@@ -83,3 +81,11 @@ Poi fui famiglia del buon re Tebaldo;
 quivi mi misi a far baratteria,
 di ch'io rendo ragione in questo caldo>>.
 ```
+
+---
+
+## 🚀 Project Goals
+
+1. Provide a **clear and educational implementation** of a transformer decoder.
+2. Offer a starting point for experimenting with the transformer architecture without relying on advanced libraries.
+3. Demonstrate how even a **small, simple model** can learn stylistic features from a limited dataset.
