@@ -15,7 +15,7 @@ Transformers, introduced by Vaswani et al. in ["Attention Is All You Need"](http
 A **decoder-only transformer**, like the one implemented here, focuses solely on generating sequences token by token, conditioned on the previously generated tokens.
 
 ---
-## 🏗️ Model Architecture
+## 🏰️ Model Architecture
 
 YaGPT follows a simplified yet faithful implementation of the decoder architecture with the following components:
 
@@ -41,17 +41,29 @@ With only **8.8 million parameters**, YaGPT is intentionally compact and accessi
 
 ## ✍ Training on the Divina Commedia
 
-YaGPT was trained from scratch on Dante’s *Divina Commedia* for **3 hours on a laptop**, with the goal of capturing its unique style, language, and structure. While the training duration was short, the results are a proof of concept for the decoder-only transformer architecture.
+YaGPT was trained from scratch on Dante’s *Divina Commedia* for **3 hours on a laptop**, with the goal of capturing its unique style, language, and structure. The training process involved the following steps:
+
+1. **Train a BPE Tokenizer**: Using the script `scripts/01_train_tokenizer.py`, a Byte Pair Encoding (BPE) tokenizer was trained on the *Divina Commedia*. This tokenizer learns the most efficient subword representations, crucial for better generalization.
+2. **Preprocess the Dataset**: The raw dataset was tokenized using the trained BPE tokenizer with `scripts/02_preprocess_dataset.py`. This step transformed the text into a format suitable for training the transformer model.
+3. **Model Training**: The preprocessed dataset was used to train YaGPT using `scripts/03_trainer.py`. Training lasted for 3 hours on a standard laptop, demonstrating the viability of transformer training with limited resources.
+
+To summarize, YaGPT was trained from scratch, beginning with training the tokenizer and preprocessing the dataset, followed by training the model to capture the linguistic nuances of Dante's text.
 
 ### How to Train
 
 To train YaGPT on your dataset, follow these steps:
 
-1. Clone this repository and navigate to the root directory.
-2. Run the training script:
-
+1. Train the tokenizer:
    ```bash
-   python scripts/train.py --dataset_path [DATASET_PATH] --batch_size [BATCH_SIZE] --d_model [D_MODEL] --seq_len [SEQ_LEN] --n_heads [N_HEADS] --n_layers [N_LAYERS] --dropout [DROPOUT] --max_epochs [MAX_EPOCHS] --lr [LEARNING_RATE]
+   python scripts/01_train_tokenizer.py --dataset_path [DATASET_PATH]
+   ```
+2. Preprocess the dataset:
+   ```bash
+   python scripts/02_preprocess_dataset.py --dataset_path [DATASET_PATH] --tokenizer_path [TOKENIZER_PATH]
+   ```
+3. Run the training script:
+   ```bash
+   python scripts/03_trainer.py --dataset_path [PREPROCESSED_DATASET_PATH] --tokenizer_path [TOKENIZER_PATH] --batch_size [BATCH_SIZE] --d_model [D_MODEL] --seq_len [SEQ_LEN] --n_heads [N_HEADS] --n_layers [N_LAYERS] --dropout [DROPOUT] --max_epochs [MAX_EPOCHS] --lr [LEARNING_RATE]
    ```
 
 ---
