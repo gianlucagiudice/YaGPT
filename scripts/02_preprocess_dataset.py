@@ -20,39 +20,31 @@ def split_dataset(tokens, train_ratio):
     return train_tokens, val_tokens
 
 
-def main(
+def encode_dataset(
         dataset_path: str,
-        tokenizer_name: str = 'bpe',
-        vocab_size: int = 1_000,
+        tokenizer_path: str,
         output_dir: str = None,
-        train_ratio: float = 0.8,
-        verbose: bool = True
+        train_ratio: float = 0.8
 ):
-    if dataset_path is None:
-        raise ValueError('dataset_path must be provided')
+    if dataset_path is None or tokenizer_path is None:
+        raise ValueError('dataset_path and tokenizer_path must be provided')
     if output_dir is None:
         output_dir = os.path.dirname(dataset_path)
     os.makedirs(output_dir, exist_ok=True)
 
     # Read dataset
     raw_text = read_dataset(dataset_path, lower_case=False)
-    # Initialize tokenizer
-    tokenizer = tokenizer_factory(tokenizer_name)
-    # Train tokenizer
-    tokenizer.train(
-        text=raw_text,
-        vocab_size=vocab_size,
-        verbose=verbose,
-        save_path=os.path.join(output_dir, 'tokenizer')
-    )
+    # Load pre-trained tokenizer
+    tokenizer = tokenizer_factory('bpe')
+    tokenizer.load(tokenizer_path)
     # Tokenize dataset
     tokens = tokenizer.encode(raw_text)
     # Split dataset
     train_tokens, val_tokens = split_dataset(tokens, train_ratio=train_ratio)
-    # Save dataset
+    # Save tokenized datasets
     torch.save(train_tokens, os.path.join(output_dir, 'train.bin'))
     torch.save(val_tokens, os.path.join(output_dir, 'val.bin'))
 
 
 if __name__ == '__main__':
-    fire.Fire(main)
+    fire.Fire(encode_dataset)
