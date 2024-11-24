@@ -1,0 +1,8 @@
+torch==2.4.1
+
+git+https://github.com/gianlucagiudice/minbpe.git@feature/pyproject-toml#egg=minbpe
+
+lightning~=2.2.5
+wandb~=0.16.6
+tiktoken~=0.6.0
+fire~=0.6.0
