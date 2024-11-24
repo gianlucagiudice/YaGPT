@@ -94,7 +94,6 @@ python scripts/04_generate.py \
 
 This script allows you to generate text based on a given prompt, leveraging the trained YaGPT model to produce sequences that mimic Dante's style.
 
-
 The model's output was evaluated qualitatively for coherence, fluency, and adherence to Dante's style. Below is an example:
 
 ```
