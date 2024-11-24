@@ -5,6 +5,7 @@ from .tokenizer import AbstractTokenizer
 
 
 class BPETokenizer(AbstractTokenizer):
+
     def __init__(self):
         self.tokenizer = None
 
@@ -47,3 +48,9 @@ class BPETokenizer(AbstractTokenizer):
 
         vocab_size = len(self.tokenizer.vocab)
         return vocab_size
+
+    @staticmethod
+    def load_from_checkpoint(checkpoint_path: str) -> 'BPETokenizer':
+        tokenizer = BPETokenizer()
+        tokenizer.load(checkpoint_path)
+        return tokenizer

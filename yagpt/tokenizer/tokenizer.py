@@ -24,3 +24,8 @@ class AbstractTokenizer(ABC):
     @abstractmethod
     def vocab_size(self) -> int:
         pass
+
+    @staticmethod
+    @abstractmethod
+    def load_from_checkpoint(checkpoint_path: str) -> 'AbstractTokenizer':
+        pass
