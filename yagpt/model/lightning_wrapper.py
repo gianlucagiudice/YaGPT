@@ -2,6 +2,7 @@ import lightning
 import torch
 
 from yagpt.model import YaGPTConfig, YaGPT
+from yagpt.tokenizer import AbstractTokenizer
 
 
 class YaGPTWrapper(lightning.LightningModule):
@@ -43,10 +44,18 @@ class YaGPTWrapper(lightning.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        # TODO: Fix scheduler
-        # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        #     optimizer,
-        #     T_0=self.scheduler_t0,
-        #     T_mult=self.scheduler_t_mult
-        # )
         return optimizer
+
+    def generate_text(
+            self,
+            prompt: str,
+            n_steps: int,
+            temperature: float,
+            top_k: int,
+            tokenizer: AbstractTokenizer
+    ) -> str:
+        tokens = tokenizer.encode(prompt)
+        batch = torch.tensor(tokens).unsqueeze(0).long()
+        for token in self.model.generate_text(batch, n_steps, temperature=temperature, top_k=top_k):
+            predicted_token = tokenizer.decode([token])
+            yield predicted_token
