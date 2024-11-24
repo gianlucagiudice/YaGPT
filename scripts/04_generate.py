@@ -1,8 +1,7 @@
 import fire
 import torch
 
-from yagpt.model import YaGPTWrapper
-from yagpt.tokenizer import tokenizer_factory
+from yagpt import YaGPTWrapper, tokenizer_factory
 
 
 def generate(
