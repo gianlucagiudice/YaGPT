@@ -49,10 +49,10 @@ class YaGPTWrapper(lightning.LightningModule):
     def generate_text(
             self,
             prompt: str,
-            n_steps: int,
-            temperature: float,
-            top_k: int,
-            tokenizer: AbstractTokenizer
+            tokenizer: AbstractTokenizer,
+            n_steps: int = 200,
+            temperature: float = 1.5,
+            top_k: int = 5,
     ) -> str:
         tokens = tokenizer.encode(prompt)
         batch = torch.tensor(tokens).unsqueeze(0).long()

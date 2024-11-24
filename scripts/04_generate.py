@@ -30,7 +30,7 @@ def generate(
           f"{text}\n"
           f">>> Generated text:")
 
-    for token in model.generate_text(text, n_steps, temperature=temperature, top_k=top_k, tokenizer=tokenizer):
+    for token in model.generate_text(text, tokenizer, n_steps=n_steps, temperature=temperature, top_k=top_k):
         print(token, end='')
 
 
